@@ -103,3 +103,14 @@ test("areas can be added, renamed and removed", async ({ page }) => {
   await expect(link(page, renamed)).toHaveCount(0);
   await noErrors(page);
 });
+
+test("no page scrolls sideways, even with a long title", async ({ page }) => {
+  const t = uid("A very long action title that keeps going well past the width of an iPhone screen");
+  await quickAdd(page, t);
+  for (const path of ["/inbox", "/bench", "/areas"]) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    expect(scroll, `${path} is wider than the screen`).toBeLessThanOrEqual(width);
+  }
+});
