@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* Ryan's palette. Dark is the default; light is opt-in via data-theme="light". */
+:root {
+  --bg: #0a0c0f;
+  --surface: #171a22;
+  --line: #223540;
+  --text: #f8f8f8;
+  --muted: #e8e8e8;
+  --button: #00a99d;
+  --accent: #00a99d;
+
+  --area-amber: #f5a623;
+  --area-terra: #e06d53;
+  --area-coral: #ff6b6b;
+  --area-teal: #00a99d;
+  --area-ink: #e8e8e8;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f8f8f8;
+  --surface: #ffffff;
+  --line: #e8e8e8;
+  --text: #171a22;
+  --muted: #223540;
+  --button: #223540;
+  --area-ink: #223540;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-button: var(--button);
+  --color-accent: var(--accent);
+  --color-area-amber: var(--area-amber);
+  --color-area-terra: var(--area-terra);
+  --color-area-coral: var(--area-coral);
+  --color-area-teal: var(--area-teal);
+  --color-area-ink: var(--area-ink);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
