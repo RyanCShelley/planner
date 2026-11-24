@@ -21,7 +21,8 @@ Plan: https://claude.ai/artifact/YaaPdyPR86EHUbw6YGGAFt
 
 ```bash
 npm install
-pip install -r requirements.txt uvicorn
+pip install -r requirements.txt uvicorn pytest
 vercel env pull .env.local   # or copy .env.example and fill it in
 npm run dev                  # Next.js on :3000, FastAPI on :8000 (proxied at /api)
+python3 -m pytest tests      # API tests
 ```
