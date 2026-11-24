@@ -163,12 +163,13 @@ function IconBtn({ label, onClick, d, active }: { label: string; onClick: () => 
 }
 
 // A drop target that highlights while something is dragged over it.
-function Drop({ onDrop, className, label, role = "region", children }: { onDrop: (payload: string) => void; className?: string; label?: string; role?: string; children: React.ReactNode }) {
+function Drop({ onDrop, className, label, role = "region", style, children }: { onDrop: (payload: string) => void; className?: string; label?: string; role?: string; style?: React.CSSProperties; children: React.ReactNode }) {
   const [over, setOver] = useState(false);
   return (
     <div
       role={label ? role : undefined}
       aria-label={label}
+      style={style}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -220,12 +221,13 @@ function BlockCard({ block, ctx, style, compact }: { block: Block; ctx: Ctx; sty
   const its = ctx.items.filter((i) => i.block_id === block.id);
   const color = area ? `var(--area-${area.color})` : "var(--line)";
   return (
-    <Drop onDrop={(p) => ctx.drop(p, { block })} label={`Block ${block.name}`} role="group" className={`rounded-lg ${style ? "absolute inset-x-1" : ""}`}>
+    // In Hourly, `style` places the block on the grid; the card fills it.
+    <Drop onDrop={(p) => ctx.drop(p, { block })} label={`Block ${block.name}`} role="group" style={style} className={`rounded-lg ${style ? "absolute inset-x-1" : ""}`}>
       <div
         draggable
         onDragStart={drag(`block:${block.id}`)}
-        style={{ ...style, borderLeftColor: color }}
-        className={`${style ? "absolute inset-x-0 overflow-hidden" : ""} rounded-lg border border-l-4 border-line bg-surface`}
+        style={{ borderLeftColor: color }}
+        className={`${style ? "h-full overflow-hidden" : ""} rounded-lg border border-l-4 border-line bg-surface`}
       >
         <button onClick={() => ctx.openBlock(block)} className="flex w-full items-center gap-2 px-3 pt-2 text-left">
           {area && <AreaIcon icon={area.icon} color={area.color} className="size-3.5 shrink-0" />}
