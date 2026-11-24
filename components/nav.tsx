@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAreas } from "@/lib/data";
+import { AreaIcon } from "@/lib/icons";
 
 const ICON: Record<string, string> = {
   inbox: "M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6H3v-6z",
@@ -48,6 +50,7 @@ export function Sidebar() {
           </Link>
         );
       })}
+      <AreaLinks path={path} />
       <div className="mt-auto">
         <ThemeToggle />
       </div>
@@ -92,5 +95,28 @@ export function ThemeToggle() {
         <path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" />
       </svg>
     </button>
+  );
+}
+
+function AreaLinks({ path }: { path: string }) {
+  const { areas } = useAreas();
+  return (
+    <div className="mt-8 flex flex-col gap-1">
+      <Link href="/areas" className="mb-1 px-3 text-xs text-muted/50 hover:text-text">
+        Areas
+      </Link>
+      {areas.map((a) => (
+        <Link
+          key={a.id}
+          href={`/areas/${a.id}`}
+          className={`flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition ${
+            path === `/areas/${a.id}` ? "bg-surface text-text" : "text-muted/70 hover:text-text"
+          }`}
+        >
+          <AreaIcon icon={a.icon} color={a.color} className="size-4" />
+          {a.name}
+        </Link>
+      ))}
+    </div>
   );
 }
