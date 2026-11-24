@@ -9,6 +9,7 @@ import { AREA_COLORS, type Area, type Item } from "@/lib/types";
 import { QuickAdd } from "@/components/quick-add";
 import { ItemList } from "@/components/item-row";
 import { ItemSheet } from "@/components/item-sheet";
+import { AreaFocusPanel } from "@/components/area-focus";
 
 export default function AreaPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,6 +95,8 @@ export default function AreaPage() {
           </div>
         </div>
       )}
+
+      <AreaFocusPanel key={id} area={area} />
 
       {(() => {
         const ps = projects.filter((p) => p.area_id === id && p.status !== "done");
