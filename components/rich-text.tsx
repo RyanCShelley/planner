@@ -3,20 +3,16 @@
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { useEffect, useRef } from "react";
-
-const DELAY = 800; // save this long after typing stops, and on leaving the editor
+import { useEffect } from "react";
 
 /**
  * Rich text you can type and format (bold, italic, headings, lists, quotes, links).
  * Stores HTML; the editor's schema drops anything it doesn't know, so stored HTML is never
- * rendered raw. Read-only when `onSave` is missing.
+ * rendered raw. Nothing saves on its own: `onChange` gets the draft, and the caller saves it.
+ * Read-only (a finished page) when `onChange` is missing. Remount with a `key` to reset it.
  */
-export function RichText({ value, onSave, label, placeholder }: { value: string; onSave?: (html: string) => void; label: string; placeholder?: string }) {
-  const saved = useRef(value);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const editable = !!onSave;
-
+export function RichText({ value, onChange, label, placeholder }: { value: string; onChange?: (html: string) => void; label: string; placeholder?: string }) {
+  const editable = !!onChange;
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: !editable, autolink: true } }),
@@ -25,31 +21,22 @@ export function RichText({ value, onSave, label, placeholder }: { value: string;
     content: value,
     editable,
     immediatelyRender: false,
-    editorProps: { attributes: { class: "rich min-h-[4.5rem] text-sm", "aria-label": label, role: "textbox", "aria-multiline": "true" } },
-    onUpdate: ({ editor }) => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => flush(editor.getHTML()), DELAY);
+    editorProps: {
+      attributes: editable
+        ? { class: "rich min-h-[4.5rem] text-sm", "aria-label": label, role: "textbox", "aria-multiline": "true" }
+        : { class: "rich text-sm", "aria-label": label, role: "article" },
     },
-    onBlur: ({ editor }) => flush(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      onChange?.(html === "<p></p>" ? "" : html);
+    },
   });
 
-  function flush(html: string) {
-    if (timer.current) clearTimeout(timer.current);
-    const clean = html === "<p></p>" ? "" : html;
-    if (!onSave || clean === saved.current) return;
-    saved.current = clean;
-    onSave(clean);
-  }
-
-  // Take in changes from another device, unless you're typing here.
+  // A finished page follows the saved text, including changes from another device.
   useEffect(() => {
-    if (!editor || editor.isFocused || value === saved.current) return;
-    saved.current = value;
+    if (!editor || editable || editor.getHTML() === value) return;
     editor.commands.setContent(value, { emitUpdate: false });
-  }, [editor, value]);
-
-  // Save anything pending when leaving the page.
-  useEffect(() => () => editor && !editor.isDestroyed ? flush(editor.getHTML()) : undefined, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editor, editable, value]);
 
   return (
     <div className="space-y-2">
