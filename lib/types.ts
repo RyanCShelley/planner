@@ -20,3 +20,18 @@ export type Item = {
   done_at: string | null;
   created_at: string;
 };
+
+export type Part = "morning" | "afternoon" | "evening";
+
+export type Block = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  name: string;
+  part_of_day: Part;
+  length_min: number;
+  start_time: string | null; // "HH:MM:SS" when pinned
+  area_id: string | null;
+  project_id: string | null;
+  rule_id: string | null;
+  gcal_event_id: string | null;
+};
