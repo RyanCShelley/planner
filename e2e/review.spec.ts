@@ -49,7 +49,7 @@ test("the review flags goals with nothing scheduled this week and links to plan 
   const picker = page.getByLabel("Scheduled in");
   await picker.selectOption((await picker.locator("option", { hasText: block }).getAttribute("value"))!);
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByRole("listitem", { name: act })).toContainText(block);
+  await expect(page.getByRole("listitem", { name: act })).toContainText("Today · Morning"); // its block's day and part
 
   // A second goal with an action that isn't on the board.
   await newGoal(page, area, unplanned);
