@@ -41,6 +41,9 @@ export default function ActionsPage() {
   const { areas } = useAreas();
   const { items } = useItems();
   const { blocks } = useBlocks(days[0], days[DAYS - 1]);
+  // Unfinished actions in blocks from past days roll back onto the Work bench.
+  const { blocks: past } = useBlocks(addDays(today(), -60), addDays(today(), -1));
+  const pastIds = new Set(past.map((b) => b.id));
   const [openItem, setOpenItem] = useState<Item | null>(null);
   const [openBlock, setOpenBlock] = useState<Block | null>(null);
 
@@ -81,7 +84,7 @@ export default function ActionsPage() {
     }
   }
 
-  const ctx: Ctx = { areas, items, blocks, mode, drop, newBlock, openItem: setOpenItem, openBlock: setOpenBlock };
+  const ctx: Ctx = { areas, items, blocks, pastIds, mode, drop, newBlock, openItem: setOpenItem, openBlock: setOpenBlock };
 
   return (
     <div className="-m-6 flex h-[calc(100dvh-5rem)] flex-col md:-m-10 md:h-dvh">
@@ -141,6 +144,7 @@ type Ctx = {
   areas: Area[];
   items: Item[];
   blocks: Block[];
+  pastIds: Set<string>;
   mode: Mode;
   drop: (payload: string, target: { block?: Block; date?: string; part?: Part; bench?: boolean }) => void;
   newBlock: (date: string, part: Part) => Promise<Block | null>;
@@ -159,10 +163,12 @@ function IconBtn({ label, onClick, d, active }: { label: string; onClick: () => 
 }
 
 // A drop target that highlights while something is dragged over it.
-function Drop({ onDrop, className, children }: { onDrop: (payload: string) => void; className?: string; children: React.ReactNode }) {
+function Drop({ onDrop, className, label, role = "region", children }: { onDrop: (payload: string) => void; className?: string; label?: string; role?: string; children: React.ReactNode }) {
   const [over, setOver] = useState(false);
   return (
     <div
+      role={label ? role : undefined}
+      aria-label={label}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -196,7 +202,7 @@ function MiniItem({ item, ctx }: { item: Item; ctx: Ctx }) {
     <div draggable onDragStart={drag(`item:${item.id}`)} className="group flex cursor-grab items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-bg/60">
       <button
         onClick={() => completeItem(item.id).catch(() => {})}
-        aria-label={`Mark ${item.title} done`}
+        aria-label={`Mark ${item.title} complete`}
         className="size-4 shrink-0 rounded-full border border-line hover:border-accent"
       />
       <button onClick={() => ctx.openItem(item)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
@@ -214,7 +220,7 @@ function BlockCard({ block, ctx, style, compact }: { block: Block; ctx: Ctx; sty
   const its = ctx.items.filter((i) => i.block_id === block.id);
   const color = area ? `var(--area-${area.color})` : "var(--line)";
   return (
-    <Drop onDrop={(p) => ctx.drop(p, { block })} className={`rounded-lg ${style ? "absolute inset-x-1" : ""}`}>
+    <Drop onDrop={(p) => ctx.drop(p, { block })} label={`Block ${block.name}`} role="group" className={`rounded-lg ${style ? "absolute inset-x-1" : ""}`}>
       <div
         draggable
         onDragStart={drag(`block:${block.id}`)}
@@ -244,7 +250,7 @@ function DayColumn({ date, ctx, mobile }: { date: string; ctx: Ctx; mobile?: boo
   const bs = ctx.blocks.filter((b) => b.date === date);
   const isToday = date === today();
   return (
-    <section className={`${mobile ? "w-full" : "w-72 shrink-0 border-r border-line"} flex flex-col overflow-y-auto`}>
+    <section aria-label={dayLabel(date)} className={`${mobile ? "w-full" : "w-72 shrink-0 border-r border-line"} flex flex-col overflow-y-auto`}>
       {!mobile && (
         <header className={`sticky top-0 z-10 bg-bg px-4 py-3 text-sm font-medium ${isToday ? "text-accent" : ""}`}>{dayLabel(date)}</header>
       )}
@@ -319,12 +325,12 @@ function Hourly({ date, blocks, ctx }: { date: string; blocks: Block[]; ctx: Ctx
 }
 
 function BenchColumn({ ctx }: { ctx: Ctx }) {
-  const open = ctx.items.filter((i) => !i.block_id);
+  const open = ctx.items.filter((i) => !i.block_id || ctx.pastIds.has(i.block_id));
   const groups = [...ctx.areas.map((a) => ({ key: a.id, area: a as Area | null })), { key: "inbox", area: null }]
     .map((g) => ({ ...g, items: open.filter((i) => (i.area_id ?? "inbox") === g.key) }))
     .filter((g) => g.items.length);
   return (
-    <Drop onDrop={(p) => ctx.drop(p, { bench: true })} className="w-72 shrink-0 overflow-y-auto border-r border-line bg-surface/40">
+    <Drop onDrop={(p) => ctx.drop(p, { bench: true })} label="Work bench" className="w-72 shrink-0 overflow-y-auto border-r border-line bg-surface/40">
       <header className="sticky top-0 z-10 bg-bg/95 px-4 py-3">
         <div className="text-sm font-medium">Work bench</div>
         <div className="text-xs text-muted/50">{open.length} unscheduled · drag onto a day</div>
