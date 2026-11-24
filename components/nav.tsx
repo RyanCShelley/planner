@@ -36,7 +36,7 @@ export function Sidebar() {
     <nav className="hidden w-56 shrink-0 flex-col gap-1 border-r border-line p-4 md:flex">
       <div className="mb-6 px-3 text-sm font-semibold tracking-tight">Planner</div>
       {NAV.map((n) => {
-        const active = path.startsWith(n.href);
+        const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
         return (
           <Link
             key={n.href}
@@ -63,7 +63,7 @@ export function TabBar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden">
       {NAV.map((n) => {
-        const active = path.startsWith(n.href);
+        const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
         return (
           <Link
             key={n.href}

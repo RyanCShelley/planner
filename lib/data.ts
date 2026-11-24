@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "./supabase/client";
-import type { Area, Block, Item } from "./types";
+import type { Area, Block, Capture, Goal, Item, Project, ScheduleRule } from "./types";
 
 export const db = () => createClient();
 
@@ -53,7 +53,7 @@ export function useAreas() {
   return { areas: rows ?? [], loading: rows === null, reload };
 }
 
-export type ItemFilter = { inbox?: boolean; areaId?: string; open?: boolean };
+export type ItemFilter = { inbox?: boolean; areaId?: string; goalId?: string; open?: boolean };
 
 export function useBlocks(from: string, to: string) {
   const { rows, reload } = useTable<Block>(
@@ -72,9 +72,10 @@ export function useItems(f: ItemFilter = {}) {
       if (f.open !== false) q = q.is("done_at", null);
       if (f.inbox) q = q.is("area_id", null);
       if (f.areaId) q = q.eq("area_id", f.areaId);
+      if (f.goalId) q = q.eq("goal_id", f.goalId);
       return q;
     },
-    [f.inbox, f.areaId, f.open],
+    [f.inbox, f.areaId, f.goalId, f.open],
   );
   return { items: rows ?? [], loading: rows === null, reload };
 }
@@ -92,4 +93,40 @@ export async function completeItem(id: string) {
     throw new Error(await res.text());
   }
   return (await res.json()) as { next_due: string | null };
+}
+
+export function useProjects() {
+  const { rows, reload } = useTable<Project>("projects", () => db().from("projects").select("*").order("created_at"));
+  return { projects: rows ?? [], loading: rows === null, reload };
+}
+
+export function useGoals() {
+  const { rows, reload } = useTable<Goal>("goals", () => db().from("goals").select("*").order("created_at"));
+  return { goals: rows ?? [], loading: rows === null, reload };
+}
+
+/** Captures waiting to be chunked, for one project. */
+export function useCaptures(projectId: string) {
+  const { rows } = useTable<Capture>(
+    "captures",
+    () => db().from("captures").select("*").eq("project_id", projectId).order("created_at"),
+    [projectId],
+  );
+  return { captures: rows ?? [] };
+}
+
+export function useRules(projectId: string) {
+  const { rows } = useTable<ScheduleRule>(
+    "schedule_rules",
+    () => db().from("schedule_rules").select("*").eq("project_id", projectId).order("created_at"),
+    [projectId],
+  );
+  return { rules: rows ?? [] };
+}
+
+/** Puts blocks for project schedules on the board for the next two weeks. Safe to call often. */
+export async function fillScheduleBlocks(today: string) {
+  const { data, error } = await db().rpc("fill_rule_blocks", { p_today: today, p_days: 14 });
+  if (error) showError(error.message);
+  else if (data) changed();
 }

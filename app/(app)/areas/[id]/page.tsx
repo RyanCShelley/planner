@@ -3,7 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AreaIcon, ICON_CHOICES } from "@/lib/icons";
-import { db, mutate, useAreas, useItems } from "@/lib/data";
+import { db, mutate, useAreas, useGoals, useItems, useProjects } from "@/lib/data";
+import { GoalCard, ProjectCard } from "@/components/plan-ui";
 import { AREA_COLORS, type Area, type Item } from "@/lib/types";
 import { QuickAdd } from "@/components/quick-add";
 import { ItemList } from "@/components/item-row";
@@ -14,6 +15,8 @@ export default function AreaPage() {
   const router = useRouter();
   const { areas, reload } = useAreas();
   const { items } = useItems({ areaId: id });
+  const { projects } = useProjects();
+  const { goals } = useGoals();
   const area = areas.find((a) => a.id === id);
   const [name, setName] = useState("");
   const [picker, setPicker] = useState(false);
@@ -92,8 +95,30 @@ export default function AreaPage() {
         </div>
       )}
 
-      <QuickAdd areaId={id} />
-      <ItemList items={items} areas={areas} onOpen={setOpen} empty="No open actions in this area." />
+      {(() => {
+        const ps = projects.filter((p) => p.area_id === id && p.status !== "done");
+        const gs = goals.filter((g) => g.area_id === id && !g.project_id && g.status === "active");
+        if (!ps.length && !gs.length) return null;
+        return (
+          <section className="space-y-2">
+            <h2 className="text-sm font-medium text-muted/70">Projects and goals</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ps.map((p) => (
+                <ProjectCard key={p.id} project={p} area={area} goals={goals} />
+              ))}
+              {gs.map((g) => (
+                <GoalCard key={g.id} goal={g} area={area} items={items} />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted/70">Everything else</h2>
+        <QuickAdd areaId={id} />
+        <ItemList items={items.filter((i) => !i.goal_id)} areas={areas} onOpen={setOpen} empty="No open actions in this area." />
+      </section>
 
       <div className="border-t border-line pt-6">
         {!removing ? (
