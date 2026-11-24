@@ -89,7 +89,8 @@ export default function ActionsPage() {
   return (
     <div className="-m-6 flex h-[calc(100dvh-5rem)] flex-col md:-m-10 md:h-dvh">
       <div className="flex items-center gap-2 border-b border-line px-4 py-3 md:px-6">
-        <h1 className="mr-2 text-xl font-semibold tracking-tight">Actions</h1>
+        {/* On iPhone the tab bar already says Actions; the toolbar needs the room. */}
+        <h1 className="mr-2 hidden text-xl font-semibold tracking-tight md:block">Actions</h1>
         <IconBtn label="Previous days" onClick={() => setStart(addDays(start, -DAYS))} d="M15 6l-6 6 6 6" />
         <button onClick={() => { setStart(today()); setMDay(0); }} className="rounded-lg px-2 py-1 text-sm text-muted/70 hover:text-text">
           Today
@@ -97,7 +98,7 @@ export default function ActionsPage() {
         <IconBtn label="Next days" onClick={() => setStart(addDays(start, DAYS))} d="M9 6l6 6-6 6" />
         <div className="ml-auto flex rounded-lg border border-line p-0.5 text-xs">
           {(["parts", "hourly"] as Mode[]).map((m) => (
-            <button key={m} onClick={() => setMode(m)} className={`rounded-md px-3 py-1 ${mode === m ? "bg-surface text-text" : "text-muted/60"}`}>
+            <button key={m} onClick={() => setMode(m)} className={`whitespace-nowrap rounded-md px-3 py-1 ${mode === m ? "bg-surface text-text" : "text-muted/60"}`}>
               {m === "parts" ? "Day parts" : "Hourly"}
             </button>
           ))}
