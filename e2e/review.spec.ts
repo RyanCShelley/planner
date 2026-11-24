@@ -78,7 +78,7 @@ test("the review shows each area's current focus and what got done", async ({ pa
   const editor = page.getByRole("textbox", { name: `${area} focus` });
   await editor.click();
   await page.keyboard.type("Family dinners, phones away");
-  await page.getByLabel("Add a note").click(); // leaving the editor saves it
+  await page.getByRole("region", { name: "Focus" }).getByRole("button", { name: "Save" }).click();
   await expect(page.getByText(/^since /)).toBeVisible();
 
   const goal = uid("Eat together");
