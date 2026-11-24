@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Area, Block, Item, Part } from "@/lib/types";
 import { PARTS, blockTime, fmtTime, toHours } from "@/lib/blocks";
@@ -11,8 +12,14 @@ import { ItemSheet } from "@/components/item-sheet";
 import { BlockSheet } from "@/components/block-sheet";
 
 type Mode = "parts" | "hourly";
-const DAYS = 7;
-const H0 = 6, H1 = 22, HH = 44; // hourly grid: 6am–10pm, px per hour
+const DAY_OPTIONS = [
+  { n: 1, label: "1d" },
+  { n: 3, label: "3d" },
+  { n: 5, label: "5d" },
+  { n: 7, label: "1w" },
+  { n: 14, label: "2w" },
+];
+const H0 = 6, H1 = 22, HH = 44; // calendar grid: 6am–10pm, px per hour
 
 function useStored<T extends string>(key: string, initial: T) {
   const [v, setV] = useState<T>(initial);
@@ -33,15 +40,17 @@ function useStored<T extends string>(key: string, initial: T) {
 
 export default function ActionsPage() {
   const [start, setStart] = useState(today());
+  const [selectedDay, setSelectedDay] = useState(today());
+  const [dayCountStr, setDayCountStr] = useStored<string>("planner-days", "3");
+  const dayCount = Number(dayCountStr) || 3;
   const [mode, setMode] = useStored<Mode>("planner-mode", "parts");
-  const [bench, setBench] = useStored<"on" | "off">("planner-bench", "on");
-  const [mDay, setMDay] = useState(0);
-  const days = Array.from({ length: DAYS }, (_, i) => addDays(start, i));
+  const [showPanel, setShowPanel] = useStored<"on" | "off">("planner-actions-panel", "on");
+  const [mobileTab, setMobileTab] = useState<"actions" | "calendar">("actions");
+  const days = Array.from({ length: dayCount }, (_, i) => addDays(start, i));
 
   const { areas } = useAreas();
   const { items } = useItems();
-  const { blocks } = useBlocks(days[0], days[DAYS - 1]);
-  // Unfinished actions in blocks from past days roll back onto the Work bench.
+  const { blocks } = useBlocks(days[0], days[days.length - 1]);
   const { blocks: past } = useBlocks(addDays(today(), -60), addDays(today(), -1));
   const pastIds = new Set(past.map((b) => b.id));
   const [openItem, setOpenItem] = useState<Item | null>(null);
@@ -89,46 +98,92 @@ export default function ActionsPage() {
     }
   }
 
-  const ctx: Ctx = { areas, items, blocks, pastIds, mode, drop, newBlock, openItem: setOpenItem, openBlock: setOpenBlock };
+  const ctx: Ctx = { areas, items, blocks, pastIds, mode, selectedDay, setSelectedDay, drop, newBlock, openItem: setOpenItem, openBlock: setOpenBlock };
 
   return (
     <div className="-m-6 flex h-[calc(100dvh-5rem)] flex-col md:-m-10 md:h-dvh">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3 md:px-6">
-        {/* On iPhone the tab bar already says Actions; the toolbar needs the room. */}
-        <h1 className="mr-2 hidden text-xl font-semibold tracking-tight md:block">Actions</h1>
-        <IconBtn label="Previous days" onClick={() => setStart(addDays(start, -DAYS))} d="M15 6l-6 6 6 6" />
-        <button onClick={() => { setStart(today()); setMDay(0); }} className="rounded-lg px-2 py-1 text-sm text-muted/70 hover:text-text">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 md:px-6">
+        <h1 className="mr-2 hidden text-xl font-semibold tracking-tight md:block">Work Binge</h1>
+        <IconBtn label="Previous days" onClick={() => setStart(addDays(start, -dayCount))} d="M15 6l-6 6 6 6" />
+        <button
+          onClick={() => {
+            const t = today();
+            setStart(t);
+            setSelectedDay(t);
+          }}
+          className="rounded-lg px-2 py-1 text-sm text-muted/70 hover:text-text"
+        >
           Today
         </button>
-        <IconBtn label="Next days" onClick={() => setStart(addDays(start, DAYS))} d="M9 6l6 6-6 6" />
+        <IconBtn label="Next days" onClick={() => setStart(addDays(start, dayCount))} d="M9 6l6 6-6 6" />
+
+        <div className="flex overflow-x-auto rounded-lg border border-line p-0.5 text-xs">
+          {DAY_OPTIONS.map((opt) => (
+            <button
+              key={opt.n}
+              onClick={() => setDayCountStr(String(opt.n))}
+              className={`rounded-md px-2 py-1 ${dayCount === opt.n ? "bg-surface text-text" : "text-muted/60 hover:text-text"}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         <div className="ml-auto flex rounded-lg border border-line p-0.5 text-xs">
           {(["parts", "hourly"] as Mode[]).map((m) => (
             <button key={m} onClick={() => setMode(m)} className={`whitespace-nowrap rounded-md px-3 py-1 ${mode === m ? "bg-surface text-text" : "text-muted/60"}`}>
-              {m === "parts" ? "Day parts" : "Hourly"}
+              {m === "parts" ? "Day parts" : "Calendar View"}
             </button>
           ))}
         </div>
       </div>
 
-      {/* iPhone: one day at a time */}
-      <div className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 md:hidden">
-        {days.map((d, i) => (
-          <button key={d} onClick={() => setMDay(i)} className={`shrink-0 rounded-lg px-3 py-1 text-xs ${mDay === i ? "bg-surface text-accent" : "text-muted/60"}`}>
-            {dayLabel(d)}
+      {/* iPhone: default to Today's Actions, with toggle to Calendar */}
+      <div className="flex items-center gap-2 border-b border-line px-3 py-2 md:hidden">
+        <div className="flex rounded-lg border border-line p-0.5 text-xs">
+          <button
+            onClick={() => setMobileTab("actions")}
+            className={`rounded-md px-3 py-1 ${mobileTab === "actions" ? "bg-surface text-accent" : "text-muted/60"}`}
+          >
+            Today&apos;s Actions
           </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-y-auto md:hidden">
-        <DayColumn date={days[mDay]} ctx={ctx} mobile />
+          <button
+            onClick={() => setMobileTab("calendar")}
+            className={`rounded-md px-3 py-1 ${mobileTab === "calendar" ? "bg-surface text-accent" : "text-muted/60"}`}
+          >
+            Calendar
+          </button>
+        </div>
+        {mobileTab === "calendar" && (
+          <div className="flex flex-1 gap-1 overflow-x-auto">
+            {days.map((d) => (
+              <button
+                key={d}
+                onClick={() => setSelectedDay(d)}
+                className={`shrink-0 rounded-lg px-2.5 py-1 text-xs ${selectedDay === d ? "bg-surface text-accent" : "text-muted/60"}`}
+              >
+                {dayLabel(d)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Mac: Work bench + scrolling day columns */}
+      <div className="flex-1 overflow-y-auto md:hidden">
+        {mobileTab === "actions" ? (
+          <TodaysActionsColumn ctx={ctx} mobile />
+        ) : (
+          <DayColumn date={days.includes(selectedDay) ? selectedDay : days[0]} ctx={ctx} mobile />
+        )}
+      </div>
+
+      {/* Mac: Today's Actions + scrolling day columns */}
       <div className="hidden flex-1 overflow-hidden md:flex">
-        {bench === "on" ? (
-          <BenchColumn ctx={ctx} onHide={() => setBench("off")} />
+        {showPanel === "on" ? (
+          <TodaysActionsColumn ctx={ctx} onHide={() => setShowPanel("off")} />
         ) : (
           <div className="shrink-0 border-r border-line px-1 py-3">
-            <IconBtn label="Show Work bench" onClick={() => setBench("on")} d="M4 5h16v14H4zM10 5v14M14 10l2 2-2 2" />
+            <IconBtn label="Show Today's Actions" onClick={() => setShowPanel("on")} d="M4 5h16v14H4zM10 5v14M14 10l2 2-2 2" />
           </div>
         )}
         <div className="flex flex-1 overflow-x-auto">
@@ -150,6 +205,8 @@ type Ctx = {
   blocks: Block[];
   pastIds: Set<string>;
   mode: Mode;
+  selectedDay: string;
+  setSelectedDay: (d: string) => void;
   drop: (payload: string, target: { block?: Block; date?: string; part?: Part; bench?: boolean }) => void;
   newBlock: (date: string, part: Part) => Promise<Block | null>;
   openItem: (i: Item) => void;
@@ -208,8 +265,10 @@ function MiniItem({ item, ctx }: { item: Item; ctx: Ctx }) {
       <button
         onClick={() => completeItem(item.id).catch(() => {})}
         aria-label={`Mark ${item.title} complete`}
-        className="size-4 shrink-0 rounded-full border border-line hover:border-accent"
-      />
+        className="-my-1.5 -ml-1.5 grid size-8 shrink-0 place-items-center rounded-full"
+      >
+        <span className="size-4 rounded-full border border-line transition group-hover:border-accent/60 hover:border-accent" />
+      </button>
       <button onClick={() => ctx.openItem(item)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
         <span className="size-1.5 shrink-0 rounded-full" style={{ background: area ? `var(--area-${area.color})` : "var(--line)" }} />
         <span className="truncate">{item.title}</span>
@@ -258,7 +317,16 @@ function DayColumn({ date, ctx, mobile }: { date: string; ctx: Ctx; mobile?: boo
   return (
     <section aria-label={dayLabel(date)} className={`${mobile ? "w-full" : "w-72 shrink-0 border-r border-line"} flex flex-col overflow-y-auto`}>
       {!mobile && (
-        <header className={`sticky top-0 z-10 bg-bg px-4 py-3 text-sm font-medium ${isToday ? "text-accent" : ""}`}>{dayLabel(date)}</header>
+        <header className="sticky top-0 z-10 bg-bg px-4 py-3">
+          <button
+            onClick={() => ctx.setSelectedDay(date)}
+            className={`text-sm font-medium transition hover:text-text ${
+              ctx.selectedDay === date ? "text-accent underline underline-offset-4" : isToday ? "text-accent" : "text-muted/80"
+            }`}
+          >
+            {dayLabel(date)}
+          </button>
+        </header>
       )}
       {ctx.mode === "parts" ? (
         <div className="space-y-4 px-3 pb-6 pt-2">
@@ -330,33 +398,55 @@ function Hourly({ date, blocks, ctx }: { date: string; blocks: Block[]; ctx: Ctx
   );
 }
 
-function BenchColumn({ ctx, onHide }: { ctx: Ctx; onHide: () => void }) {
-  const open = ctx.items.filter((i) => !i.block_id || ctx.pastIds.has(i.block_id));
-  const groups = [...ctx.areas.map((a) => ({ key: a.id, area: a as Area | null })), { key: "inbox", area: null }]
-    .map((g) => ({ ...g, items: open.filter((i) => (i.area_id ?? "inbox") === g.key) }))
-    .filter((g) => g.items.length);
+function TodaysActionsColumn({ ctx, onHide, mobile }: { ctx: Ctx; onHide?: () => void; mobile?: boolean }) {
+  const day = ctx.selectedDay;
+  const activeItems = ctx.items.filter((i) => (i.status ?? "active") === "active");
+  const dayBlockIds = new Set(ctx.blocks.filter((b) => b.date === day).map((b) => b.id));
+
+  const overdue = activeItems.filter((i) => i.due_date && i.due_date < day);
+  const forDay = activeItems.filter((i) => i.due_date === day || (i.block_id && dayBlockIds.has(i.block_id)));
+  const comingUp = activeItems.filter((i) => i.due_date && i.due_date > day);
+  const unscheduledCount = activeItems.filter((i) => !i.block_id && !i.due_date).length;
+
+  const sections = [
+    { key: "overdue", title: "Overdue", items: overdue, accent: "text-area-coral" },
+    { key: "today", title: day === today() ? "Today's Actions" : `${dayLabel(day)}'s Actions`, items: forDay, accent: "text-accent" },
+    { key: "later", title: "Coming up later", items: comingUp, accent: "text-muted/60" },
+  ];
+
   return (
-    <Drop onDrop={(p) => ctx.drop(p, { bench: true })} label="Work bench" className="w-72 shrink-0 overflow-y-auto border-r border-line bg-surface/40">
-      <header className="sticky top-0 z-10 flex items-start bg-bg/95 px-4 py-3">
+    <Drop
+      onDrop={(p) => ctx.drop(p, { bench: true })}
+      label="Today's Actions"
+      className={`${mobile ? "w-full" : "w-72 shrink-0 border-r border-line bg-surface/40"} overflow-y-auto`}
+    >
+      <header className="sticky top-0 z-10 flex items-start bg-bg/95 px-4 py-3 backdrop-blur-sm">
         <div className="flex-1">
-          <div className="text-sm font-medium">Work bench</div>
-          <div className="text-xs text-muted/50">{open.length} unscheduled · drag onto a day</div>
+          <div className="text-sm font-medium">{day === today() ? "Today's Actions" : `${dayLabel(day)}`}</div>
+          <div className="text-xs text-muted/50">
+            {unscheduledCount} unscheduled ·{" "}
+            <Link href="/inbox" className="text-accent hover:underline">
+              Inbox
+            </Link>
+          </div>
         </div>
-        <IconBtn label="Hide Work bench" onClick={onHide} d="M4 5h16v14H4zM10 5v14M16 10l-2 2 2 2" />
+        {onHide && <IconBtn label="Hide Today's Actions" onClick={onHide} d="M4 5h16v14H4zM10 5v14M16 10l-2 2 2 2" />}
       </header>
-      <div className="space-y-4 px-2 pb-6">
-        {groups.map((g) => (
-          <div key={g.key}>
-            <div className="flex items-center gap-2 px-2 pb-1 text-xs text-muted/60">
-              {g.area && <AreaIcon icon={g.area.icon} color={g.area.color} className="size-3.5" />}
-              {g.area?.name ?? "Inbox"}
+      <div className="space-y-5 px-2 pb-20 md:pb-6">
+        {sections.map((sec) => (
+          <div key={sec.key}>
+            <div className={`px-2 pb-1 text-xs font-medium ${sec.accent}`}>
+              {sec.title} ({sec.items.length})
             </div>
-            {g.items.map((i) => (
-              <MiniItem key={i.id} item={i} ctx={ctx} />
-            ))}
+            {sec.items.length ? (
+              sec.items.map((i) => <MiniItem key={i.id} item={i} ctx={ctx} />)
+            ) : (
+              <p className="px-2 py-1 text-xs text-muted/40">None</p>
+            )}
           </div>
         ))}
       </div>
     </Drop>
   );
 }
+

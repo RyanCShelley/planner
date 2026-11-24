@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "./supabase/client";
-import type { Area, AreaFocus, Block, Capture, FocusNote, Goal, Item, Project, ScheduleRule } from "./types";
+import type { Area, AreaFocus, AreaSubRole, Block, Capture, FocusNote, Goal, Item, ItemStatus, Project, Review, ScheduleRule } from "./types";
 
 export const db = () => createClient();
 
@@ -53,7 +53,20 @@ export function useAreas() {
   return { areas: rows ?? [], loading: rows === null, reload };
 }
 
-export type ItemFilter = { inbox?: boolean; areaId?: string; goalId?: string; open?: boolean };
+export function useSubRoles(areaId?: string) {
+  const { rows, reload } = useTable<AreaSubRole>(
+    "area_sub_roles",
+    () => {
+      let q = db().from("area_sub_roles").select("*").order("sort").order("created_at");
+      if (areaId) q = q.eq("area_id", areaId);
+      return q;
+    },
+    [areaId],
+  );
+  return { subRoles: rows ?? [], loading: rows === null, reload };
+}
+
+export type ItemFilter = { inbox?: boolean; areaId?: string; goalId?: string; open?: boolean; status?: ItemStatus };
 
 export function useBlocks(from: string, to: string) {
   const { rows, reload } = useTable<Block>(
@@ -73,9 +86,10 @@ export function useItems(f: ItemFilter = {}) {
       if (f.inbox) q = q.is("area_id", null);
       if (f.areaId) q = q.eq("area_id", f.areaId);
       if (f.goalId) q = q.eq("goal_id", f.goalId);
+      if (f.status) q = q.eq("status", f.status);
       return q;
     },
-    [f.inbox, f.areaId, f.goalId, f.open],
+    [f.inbox, f.areaId, f.goalId, f.open, f.status],
   );
   return { items: rows ?? [], loading: rows === null, reload };
 }
@@ -165,4 +179,12 @@ export function useDoneSince(from: string) {
     [from],
   );
   return { done: rows ?? [] };
+}
+
+export function useReviews() {
+  const { rows, reload } = useTable<Review>(
+    "reviews",
+    () => db().from("reviews").select("*").order("week_of", { ascending: false }),
+  );
+  return { reviews: rows ?? [], loading: rows === null, reload };
 }

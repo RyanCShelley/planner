@@ -104,6 +104,31 @@ begin
   if n <> 2 then raise exception 'focus history has % entries, expected 2', n; end if;
 end $$;
 
+-- 2d. Sub-roles, item statuses, project goal_text, and review wizard state.
+do $$
+declare n int; fam uuid; srid uuid; pid uuid; rid uuid;
+begin
+  select count(*) into n from public.area_sub_roles;
+  if n <> 9 then raise exception 'user A has % seeded sub-roles, expected 9', n; end if;
+
+  select id into fam from public.areas where name = 'Family';
+  insert into public.area_sub_roles (area_id, name, sort) values (fam, 'Date Night', 4) returning id into srid;
+
+  insert into public.items (title, area_id, sub_role_id, status, waiting_on, batch_tag)
+    values ('Plan trip', fam, srid, 'pending', 'Travel agent', 'errands');
+  select count(*) into n from public.items where status = 'pending' and sub_role_id = srid and waiting_on = 'Travel agent' and batch_tag = 'errands';
+  if n <> 1 then raise exception 'item with sub_role_id/status/waiting_on/batch_tag not found'; end if;
+
+  insert into public.projects (area_id, title, goal_text) values (fam, 'Summer Vacation', 'Book flights and cabin') returning id into pid;
+  select count(*) into n from public.projects where id = pid and goal_text = 'Book flights and cabin';
+  if n <> 1 then raise exception 'project goal_text not saved'; end if;
+
+  insert into public.reviews (week_of, mission_text, resolutions_text, step_completed)
+    values ('2026-11-23', 'Be present', 'Exercise 3x/week', 2) returning id into rid;
+  select count(*) into n from public.reviews where id = rid and step_completed = 2;
+  if n <> 1 then raise exception 'review wizard state not saved'; end if;
+end $$;
+
 -- 3. Another user sees none of it and cannot write into it.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b0","role":"authenticated"}', true);
 do $$
@@ -121,12 +146,22 @@ begin
   if n <> 0 then raise exception 'user B can see user A''s focus'; end if;
   select count(*) into n from public.focus_notes;
   if n <> 0 then raise exception 'user B can see user A''s focus notes'; end if;
+  select count(*) into n from public.area_sub_roles;
+  if n <> 9 then raise exception 'user B sees % sub-roles, expected only their own 9', n; end if;
+  select count(*) into n from public.reviews;
+  if n <> 0 then raise exception 'user B can see user A''s reviews'; end if;
   update public.areas set name = 'hacked' where user_id = '00000000-0000-0000-0000-0000000000a0';
   select count(*) into n from public.areas where name = 'hacked';
   if n <> 0 then raise exception 'user B changed user A''s area'; end if;
   begin
     insert into public.items (title, user_id) values ('x', '00000000-0000-0000-0000-0000000000a0');
     raise exception 'user B inserted a row as user A';
+  exception when insufficient_privilege then null; -- expected: blocked by RLS
+  end;
+  begin
+    insert into public.area_sub_roles (area_id, name, user_id)
+      values ((select id from public.areas limit 1), 'hack', '00000000-0000-0000-0000-0000000000a0');
+    raise exception 'user B inserted a sub-role as user A';
   exception when insufficient_privilege then null; -- expected: blocked by RLS
   end;
 end $$;

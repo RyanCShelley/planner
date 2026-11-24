@@ -9,8 +9,8 @@ import { today } from "@/lib/dates";
 
 export const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 export const small = "rounded-lg border border-line bg-bg px-2 py-1.5 text-sm outline-none focus:border-accent";
-export const btn = "rounded-lg bg-button px-4 py-2 text-sm font-medium text-white disabled:opacity-30";
-export const ghost = "rounded-lg border border-line px-4 py-2 text-sm hover:border-accent disabled:opacity-30";
+export const btn = "cursor-pointer rounded-lg bg-button px-4 py-2 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-30";
+export const ghost = "cursor-pointer rounded-lg border border-line px-4 py-2 text-sm transition hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-30";
 
 const DAY = 86_400_000;
 export function daysLeft(iso: string | null) {
@@ -118,7 +118,7 @@ export function goalStats(g: Goal, items: Item[]) {
   return { open: a.length, scheduled: a.filter((i) => i.block_id).length, musts: a.filter((i) => i.must).length };
 }
 
-const card = "flex min-h-28 flex-col gap-1 rounded-xl border border-l-4 border-line bg-surface p-4 text-left text-sm transition hover:border-accent";
+const card = "flex min-h-28 flex-col gap-1 rounded-xl border border-l-4 border-line bg-surface p-4 text-left text-sm transition hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-[0.99]";
 
 export function GoalCard({ goal, area, items }: { goal: Goal; area?: Area; items: Item[] }) {
   const s = goalStats(goal, items);
@@ -142,17 +142,29 @@ export function GoalCard({ goal, area, items }: { goal: Goal; area?: Area; items
   );
 }
 
-export function ProjectCard({ project, area, goals, ruleCount }: { project: Project; area?: Area; goals: Goal[]; ruleCount?: number }) {
-  const n = goals.filter((g) => g.project_id === project.id).length;
+export function ProjectCard({ project, area, ruleCount }: { project: Project; area?: Area; goals?: Goal[]; ruleCount?: number }) {
   return (
-    <Link href={`/projects/${project.id}`} className={card} style={{ borderLeftColor: area ? `var(--area-${area.color})` : undefined }}>
-      <span className="text-[11px] uppercase tracking-wide text-muted/50">Project{project.status !== "active" ? ` · ${project.status}` : ""}</span>
-      <b className="font-medium">{project.title}</b>
-      <span className="text-xs text-muted/60">
-        {n} goal{n === 1 ? "" : "s"}
-        {project.finish_date ? ` · finish ${fmtDate(project.finish_date)}` : ""}
-      </span>
-      {ruleCount === 0 && <span className="mt-1 self-start rounded-full bg-area-amber/15 px-2 py-0.5 text-[11px] text-area-amber">No schedule yet</span>}
+    <Link href={`/projects/${project.id}`} className={`${card} min-h-40 justify-between p-5`} style={{ borderLeftColor: area ? `var(--area-${area.color})` : undefined }}>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] uppercase tracking-wide text-muted/50">Project{project.status !== "active" ? ` · ${project.status}` : ""}</span>
+          {project.finish_date && <span className="text-xs text-muted/60">finish {fmtDate(project.finish_date)}</span>}
+        </div>
+        <b className="block text-base font-semibold leading-snug">{project.title}</b>
+        {project.purpose && (
+          <p className="line-clamp-2 text-xs text-muted/70">
+            <span className="font-medium text-muted/50">Why: </span>
+            {project.purpose}
+          </p>
+        )}
+        {project.goal_text && (
+          <p className="line-clamp-2 text-xs text-muted/80">
+            <span className="font-medium text-accent">Goal: </span>
+            {project.goal_text}
+          </p>
+        )}
+      </div>
+      {ruleCount === 0 && <span className="mt-2 self-start rounded-full bg-area-amber/15 px-2 py-0.5 text-[11px] text-area-amber">No schedule yet</span>}
     </Link>
   );
 }

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AreaIcon } from "@/lib/icons";
-import { db, mutate, useAreas } from "@/lib/data";
+import { db, mutate, useAreas, useSubRoles } from "@/lib/data";
 import type { Area } from "@/lib/types";
 
-// Add, reorder and remove areas. Rename, icon and color live on each area's page.
+// Add, reorder and remove areas. Rename, icon, color and sub-roles live on each area's page.
 export default function AreasPage() {
   const { areas, reload } = useAreas();
+  const { subRoles } = useSubRoles();
   const [name, setName] = useState("");
 
   async function add() {
@@ -31,23 +32,54 @@ export default function AreasPage() {
   }
 
   return (
-    <div className="max-w-md space-y-6">
+    <div className="max-w-2xl space-y-6">
       <h1 className="text-xl font-semibold tracking-tight">Areas</h1>
       <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-        {areas.map((a, i) => (
-          <li key={a.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-            <AreaIcon icon={a.icon} color={a.color} />
-            <Link href={`/areas/${a.id}`} className="flex-1 hover:text-accent">
-              {a.name}
-            </Link>
-            <button onClick={() => move(a, -1)} disabled={i === 0} aria-label="Move up" className="px-1 text-muted/50 hover:text-text disabled:opacity-20">
-              ↑
-            </button>
-            <button onClick={() => move(a, 1)} disabled={i === areas.length - 1} aria-label="Move down" className="px-1 text-muted/50 hover:text-text disabled:opacity-20">
-              ↓
-            </button>
-          </li>
-        ))}
+        {areas.map((a, i) => {
+          const roles = subRoles.filter((sr) => sr.area_id === a.id);
+          return (
+            <li key={a.id} className="flex items-start gap-3 px-4 py-3 text-sm">
+              <div className="pt-0.5">
+                <AreaIcon icon={a.icon} color={a.color} />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Link href={`/areas/${a.id}`} className="block font-medium hover:text-accent">
+                  {a.name}
+                </Link>
+                {roles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {roles.map((sr) => (
+                      <span
+                        key={sr.id}
+                        className="rounded-md border border-line bg-bg/60 px-2 py-0.5 text-xs text-muted"
+                      >
+                        {sr.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-1 pt-0.5">
+                <button
+                  onClick={() => move(a, -1)}
+                  disabled={i === 0}
+                  aria-label="Move up"
+                  className="grid size-8 place-items-center rounded-lg text-muted/50 transition hover:bg-bg hover:text-text disabled:opacity-20"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => move(a, 1)}
+                  disabled={i === areas.length - 1}
+                  aria-label="Move down"
+                  className="grid size-8 place-items-center rounded-lg text-muted/50 transition hover:bg-bg hover:text-text disabled:opacity-20"
+                >
+                  ↓
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
       <div className="flex gap-2">
         <input
@@ -57,7 +89,11 @@ export default function AreasPage() {
           placeholder="New area"
           className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <button onClick={add} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">
+        <button
+          onClick={add}
+          disabled={!name.trim()}
+          className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white transition disabled:opacity-30"
+        >
           Add
         </button>
       </div>

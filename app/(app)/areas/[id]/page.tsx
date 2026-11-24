@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AreaIcon, ICON_CHOICES } from "@/lib/icons";
-import { db, mutate, useAreas, useGoals, useItems, useProjects } from "@/lib/data";
+import { db, mutate, useAreas, useGoals, useItems, useProjects, useSubRoles } from "@/lib/data";
 import { GoalCard, ProjectCard } from "@/components/plan-ui";
-import { AREA_COLORS, type Area, type Item } from "@/lib/types";
+import { AREA_COLORS, type Area, type AreaSubRole, type Item } from "@/lib/types";
 import { QuickAdd } from "@/components/quick-add";
 import { ItemList } from "@/components/item-row";
 import { ItemSheet } from "@/components/item-sheet";
@@ -15,22 +17,65 @@ export default function AreaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { areas, reload } = useAreas();
+  const { subRoles, reload: reloadSubRoles } = useSubRoles(id);
   const { items } = useItems({ areaId: id });
   const { projects } = useProjects();
   const { goals } = useGoals();
   const area = areas.find((a) => a.id === id);
   const [name, setName] = useState("");
+  const [newRole, setNewRole] = useState("");
   const [picker, setPicker] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [moveTo, setMoveTo] = useState<string>("");
   const [open, setOpen] = useState<Item | null>(null);
 
   useEffect(() => setName(area?.name ?? ""), [area?.name]);
-  if (!area) return null;
+  if (!area) {
+    return (
+      <p className="text-sm text-muted/60">
+        Loading or area not found.{" "}
+        <Link href="/areas" className="underline">
+          All areas
+        </Link>
+      </p>
+    );
+  }
 
   async function update(patch: Partial<Area>) {
     await mutate(db().from("areas").update(patch).eq("id", id));
     reload();
+  }
+
+  async function addRole() {
+    if (!newRole.trim()) return;
+    const sort = Math.max(0, ...subRoles.map((r) => r.sort)) + 1;
+    if (await mutate(db().from("area_sub_roles").insert({ area_id: id, name: newRole.trim(), sort }))) {
+      setNewRole("");
+      reloadSubRoles();
+    }
+  }
+
+  async function renameRole(role: AreaSubRole, nextName: string) {
+    const trimmed = nextName.trim();
+    if (!trimmed || trimmed === role.name) return;
+    await mutate(db().from("area_sub_roles").update({ name: trimmed }).eq("id", role.id));
+    reloadSubRoles();
+  }
+
+  async function moveRole(role: AreaSubRole, dir: -1 | 1) {
+    const i = subRoles.findIndex((x) => x.id === role.id);
+    const other = subRoles[i + dir];
+    if (!other) return;
+    await Promise.all([
+      mutate(db().from("area_sub_roles").update({ sort: other.sort }).eq("id", role.id)),
+      mutate(db().from("area_sub_roles").update({ sort: role.sort }).eq("id", other.id)),
+    ]);
+    reloadSubRoles();
+  }
+
+  async function removeRole(roleId: string) {
+    await mutate(db().from("area_sub_roles").delete().eq("id", roleId));
+    reloadSubRoles();
   }
 
   // Projects and goals must belong to an area, so everything moves before the area goes.
@@ -49,7 +94,7 @@ export default function AreaPage() {
   const others = areas.filter((a) => a.id !== id);
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-8">
       <div className="flex items-center gap-3">
         <button
           onClick={() => setPicker(!picker)}
@@ -97,6 +142,65 @@ export default function AreaPage() {
       )}
 
       <AreaFocusPanel key={id} area={area} />
+
+      <section aria-label="Sub-roles" className="space-y-3">
+        <h2 className="text-sm font-medium text-muted/70">Sub-roles</h2>
+        {subRoles.length > 0 && (
+          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+            {subRoles.map((sr, i) => (
+              <li key={sr.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                <input
+                  defaultValue={sr.name}
+                  key={sr.id + ":" + sr.name}
+                  onBlur={(e) => renameRole(sr, e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                  aria-label={`Sub-role ${sr.name}`}
+                  className="min-w-0 flex-1 bg-transparent outline-none focus:text-accent"
+                />
+                <button
+                  onClick={() => moveRole(sr, -1)}
+                  disabled={i === 0}
+                  aria-label={`Move ${sr.name} up`}
+                  className="grid size-8 place-items-center rounded-lg text-muted/50 transition hover:bg-bg hover:text-text disabled:opacity-20"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveRole(sr, 1)}
+                  disabled={i === subRoles.length - 1}
+                  aria-label={`Move ${sr.name} down`}
+                  className="grid size-8 place-items-center rounded-lg text-muted/50 transition hover:bg-bg hover:text-text disabled:opacity-20"
+                >
+                  ↓
+                </button>
+                <button
+                  onClick={() => removeRole(sr.id)}
+                  aria-label={`Remove ${sr.name}`}
+                  className="grid size-8 place-items-center rounded-lg text-muted/50 transition hover:bg-bg hover:text-area-coral"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex gap-2">
+          <input
+            value={newRole}
+            onChange={(e) => setNewRole(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addRole()}
+            placeholder="Add sub-role (e.g. Spiritual growth, Wife, Boys)"
+            className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+          />
+          <button
+            onClick={addRole}
+            disabled={!newRole.trim()}
+            className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white disabled:opacity-30"
+          >
+            Add
+          </button>
+        </div>
+      </section>
 
       {(() => {
         const ps = projects.filter((p) => p.area_id === id && p.status !== "done");

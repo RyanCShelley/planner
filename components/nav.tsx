@@ -8,16 +8,14 @@ import { AreaIcon } from "@/lib/icons";
 const ICON: Record<string, string> = {
   inbox: "M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6H3v-6z",
   actions: "M4 5h4v14H4zM10 5h4v14h-4zM16 5h4v14h-4z",
-  bench: "M4 6h16M4 12h16M4 18h10",
   projects: "M3 7h7l2 2h9v10H3z",
   review: "M5 4h14v16H5zM9 9l2 2 4-4M9 15h6",
 };
 
-// Order agreed with Ryan: Inbox first, then Actions.
+// Order agreed with Ryan: Inbox first, then Work Binge.
 export const NAV = [
   { href: "/inbox", label: "Inbox", icon: "inbox" },
-  { href: "/actions", label: "Actions", icon: "actions" },
-  { href: "/bench", label: "Work bench", short: "Bench", icon: "bench" },
+  { href: "/actions", label: "Work Binge", short: "Binge", icon: "actions" },
   { href: "/projects", label: "Projects", icon: "projects" },
   { href: "/review", label: "Weekly review", short: "Week", icon: "review" },
 ];
@@ -33,7 +31,7 @@ function Icon({ name }: { name: string }) {
 export function Sidebar() {
   const path = usePathname();
   return (
-    <nav className="hidden w-56 shrink-0 flex-col gap-1 border-r border-line p-4 md:flex">
+    <nav className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line p-4 md:flex">
       <div className="mb-6 px-3 text-sm font-semibold tracking-tight">Planner</div>
       {NAV.map((n) => {
         const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
@@ -61,7 +59,7 @@ export function Sidebar() {
 export function TabBar() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden">
       {NAV.map((n) => {
         const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
         return (
