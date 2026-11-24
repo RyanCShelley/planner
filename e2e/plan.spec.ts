@@ -42,7 +42,10 @@ test("a project can be added, named and given a purpose", async ({ page }, info)
   const title = uid("Rebuild the barn");
   await newProject(page, "Family", title);
   await page.getByLabel("Purpose").fill("So the animals stay dry this winter");
-  await page.getByLabel("Project title").click(); // leave the purpose to save it
+  // Leave the purpose to save it, and wait for the save before reloading.
+  const saved = page.waitForResponse((r) => r.url().includes("/rest/v1/projects") && r.request().method() === "PATCH" && r.ok());
+  await page.getByLabel("Project title").click();
+  await saved;
   await page.reload();
   await expect(page.getByLabel("Purpose")).toHaveValue("So the animals stay dry this winter");
 
