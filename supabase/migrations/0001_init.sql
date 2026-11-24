@@ -141,6 +141,11 @@ create table public.reviews (
   unique (user_id, week_start)
 );
 
+-- Newer Supabase projects don't grant table access to signed-in users by default.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+
 -- Row-level security + updated_at on every table ------------------------------
 do $$
 declare t text;
