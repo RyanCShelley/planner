@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Area, Item, Repeat } from "@/lib/types";
 import { REPEATS, WD } from "@/lib/repeat";
-import { completeItem, db } from "@/lib/data";
+import { completeItem, db, mutate } from "@/lib/data";
 
 const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 const label = "mb-1 block text-xs text-muted/60";
@@ -19,14 +19,14 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
   async function save() {
     if (!d) return;
     const { id, title, notes, area_id, due_date, repeat, repeat_days, must } = d;
-    await db()
+    await mutate(db()
       .from("items")
       .update({ title: title.trim() || "Untitled", notes, area_id, due_date, repeat, repeat_days: repeat === "days" ? repeat_days : null, must })
-      .eq("id", id);
+      .eq("id", id));
     onClose();
   }
   async function remove() {
-    await db().from("items").delete().eq("id", d!.id);
+    await mutate(db().from("items").delete().eq("id", d!.id));
     onClose();
   }
   async function done() {

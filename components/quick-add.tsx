@@ -4,7 +4,7 @@ import { useState } from "react";
 import { parseMany } from "@/lib/parse";
 import { repeatLabel } from "@/lib/repeat";
 import { dayLabel } from "@/lib/dates";
-import { db } from "@/lib/data";
+import { db, mutate } from "@/lib/data";
 
 // Type or dictate (iPhone keyboard mic). Several things at once are split into separate items.
 export function QuickAdd({ areaId = null }: { areaId?: string | null }) {
@@ -13,10 +13,10 @@ export function QuickAdd({ areaId = null }: { areaId?: string | null }) {
 
   async function add() {
     if (!drafts.length) return;
-    await db()
+    const ok = await mutate(db()
       .from("items")
-      .insert(drafts.map((d) => ({ ...d, area_id: areaId })));
-    setText("");
+      .insert(drafts.map((d) => ({ ...d, area_id: areaId }))));
+    if (ok) setText("");
   }
 
   return (

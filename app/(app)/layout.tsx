@@ -1,4 +1,5 @@
 import { Sidebar, TabBar } from "@/components/nav";
+import { Toast } from "@/components/toast";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -6,6 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <main className="flex-1 p-6 pb-24 md:p-10">{children}</main>
       <TabBar />
+      <Toast />
     </div>
   );
 }
