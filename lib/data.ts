@@ -188,3 +188,91 @@ export function useReviews() {
   );
   return { reviews: rows ?? [], loading: rows === null, reload };
 }
+
+export type GoogleCalendarConnection = {
+  user_id: string;
+  email: string | null;
+  planner_calendar_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GoogleCalendarEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  calendar_name: string | null;
+};
+
+export function useGoogleCalendarConnection() {
+  const { rows, reload } = useTable<GoogleCalendarConnection>(
+    "google_calendar_connections",
+    () => db().from("google_calendar_connections").select("user_id, email, planner_calendar_id, created_at, updated_at"),
+  );
+  const connection = rows?.[0] ?? null;
+  return {
+    connection,
+    connected: !!connection,
+    loading: rows === null,
+    reload,
+  };
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { data } = await db().auth.getSession();
+  return { Authorization: `Bearer ${data.session?.access_token ?? ""}` };
+}
+
+export async function getGoogleAuthUrl(): Promise<string> {
+  const res = await fetch("/api/auth/google/url", { headers: await authHeaders() });
+  if (!res.ok) {
+    showError(`Couldn't start Google sign-in (${res.status}).`);
+    throw new Error(await res.text());
+  }
+  const json = (await res.json()) as { url: string };
+  return json.url;
+}
+
+export async function disconnectGoogleCalendar(): Promise<void> {
+  const res = await fetch("/api/auth/google/disconnect", {
+    method: "POST",
+    headers: await authHeaders(),
+  });
+  changed();
+  if (!res.ok) {
+    showError(`Couldn't disconnect Google Calendar (${res.status}).`);
+    throw new Error(await res.text());
+  }
+}
+
+export async function fetchGoogleCalendarEvents(start: string, end: string): Promise<GoogleCalendarEvent[]> {
+  const res = await fetch(`/api/calendar/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) {
+    showError(`Couldn't load Google Calendar events (${res.status}).`);
+    throw new Error(await res.text());
+  }
+  const json = (await res.json()) as { events: GoogleCalendarEvent[] };
+  return json.events ?? [];
+}
+
+export async function syncBlockToGoogleCalendar(blockId: string): Promise<{ ok: boolean; google_event_id: string | null }> {
+  const res = await fetch("/api/calendar/sync-block", {
+    method: "POST",
+    headers: {
+      ...(await authHeaders()),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ block_id: blockId }),
+  });
+  changed();
+  if (!res.ok) {
+    showError(`Couldn't sync block to Google Calendar (${res.status}).`);
+    throw new Error(await res.text());
+  }
+  return (await res.json()) as { ok: boolean; google_event_id: string | null };
+}
+

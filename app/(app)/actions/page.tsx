@@ -103,7 +103,7 @@ export default function ActionsPage() {
   return (
     <div className="-m-6 flex h-[calc(100dvh-5rem)] flex-col md:-m-10 md:h-dvh">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 md:px-6">
-        <h1 className="mr-2 hidden text-xl font-semibold tracking-tight md:block">Work Binge</h1>
+        <h1 className="mr-2 hidden text-xl font-semibold tracking-tight md:block">Actions</h1>
         <IconBtn label="Previous days" onClick={() => setStart(addDays(start, -dayCount))} d="M15 6l-6 6 6 6" />
         <button
           onClick={() => {

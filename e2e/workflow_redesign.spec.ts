@@ -27,10 +27,10 @@ async function quickAddInbox(page: Page, text: string) {
 }
 
 test.describe("Tier 1: Navigation, Workbench Removal & Layout", () => {
-  test("navigation uses Work Binge instead of Actions and removes Workbench", async ({ page }, info) => {
+  test("navigation uses Actions and removes Workbench", async ({ page }, info) => {
     await page.goto("/actions");
     await expect(page.getByRole("link", { name: "Inbox" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Work Binge" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Actions" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Projects" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Weekly review" })).toBeVisible();
 
@@ -110,8 +110,8 @@ test.describe("Tier 2: Inbox (AcciFlow split/drawer, Sometimes folder, Keep-unti
   });
 });
 
-test.describe("Tier 3: Work Binge, Multi-day Views & Calendar View DnD", () => {
-  test("Work Binge shows Today's Actions (overdue, today, later, unscheduled count) and 1d/3d/5d/1w/2w views", async ({ page }, info) => {
+test.describe("Tier 3: Actions, Multi-day Views & Calendar View DnD", () => {
+  test("Actions shows Today's Actions (overdue, today, later, unscheduled count) and 1d/3d/5d/1w/2w views", async ({ page }, info) => {
     await page.goto("/actions");
     await expect(page.getByRole("heading", { name: /Today's Actions/i })).toBeVisible();
     await expect(page.getByText(/unscheduled/i)).toBeVisible();

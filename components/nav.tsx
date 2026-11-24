@@ -12,10 +12,10 @@ const ICON: Record<string, string> = {
   review: "M5 4h14v16H5zM9 9l2 2 4-4M9 15h6",
 };
 
-// Order agreed with Ryan: Inbox first, then Work Binge.
+// Order agreed with Ryan: Inbox first, then Actions.
 export const NAV = [
   { href: "/inbox", label: "Inbox", icon: "inbox" },
-  { href: "/actions", label: "Work Binge", short: "Binge", icon: "actions" },
+  { href: "/actions", label: "Actions", short: "Actions", icon: "actions" },
   { href: "/projects", label: "Projects", icon: "projects" },
   { href: "/review", label: "Weekly review", short: "Week", icon: "review" },
 ];
@@ -49,8 +49,18 @@ export function Sidebar() {
         );
       })}
       <AreaLinks path={path} />
-      <div className="mt-auto">
+      <div className="mt-auto flex items-center justify-between">
         <ThemeToggle />
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className={`rounded-lg p-2 transition ${path.startsWith("/settings") ? "text-accent" : "text-muted/60 hover:text-text"}`}
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </Link>
       </div>
     </nav>
   );
