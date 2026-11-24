@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "concurrently -n next,api -c cyan,yellow \"next dev\" \"npm run api\"",
     "api": "python3 -m uvicorn api.index:app --reload --port 8000",
-    "build": "next build",
+    "build": "node scripts/migrate.mjs && next build",
+    "test:api": "python3 -m pytest -q tests",
+    "test:e2e": "playwright test",
     "start": "next start",
     "lint": "tsc --noEmit"
   },
@@ -13,11 +15,13 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.2",
     "next": "^16.4.6",
+    "pg": "^8.23.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",
+    "@playwright/test": "1.63.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
