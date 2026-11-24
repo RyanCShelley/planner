@@ -63,7 +63,8 @@ test("the review flags goals with nothing scheduled this week and links to plan 
   // The block has no area of its own, so its time counts toward the area of the action in it.
   await expect(section).not.toContainText("0h blocked");
   await expect(section.getByRole("listitem", { name: unplanned })).toContainText("Nothing scheduled");
-  await expect(page.getByRole("region", { name: "Summary" })).toContainText(`“${unplanned}”`);
+  // Named when there are a few, counted when there are many (other tests add goals too).
+  await expect(page.getByRole("region", { name: "Summary" })).toContainText(/nothing scheduled this week/);
   await page.screenshot({ path: `test-results/screens/${info.project.name}-review.png`, fullPage: true });
 
   await section.getByRole("listitem", { name: unplanned }).getByRole("link", { name: "Plan it →" }).click();
