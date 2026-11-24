@@ -58,6 +58,8 @@ test("the review flags goals with nothing scheduled this week and links to plan 
   await page.goto("/review");
   const section = page.getByRole("region", { name: area });
   await expect(section.getByRole("listitem", { name: planned })).toContainText("1 scheduled");
+  // The block has no area of its own, so its time counts toward the area of the action in it.
+  await expect(section).not.toContainText("0h blocked");
   await expect(section.getByRole("listitem", { name: unplanned })).toContainText("Nothing scheduled");
   await expect(page.getByRole("region", { name: "Summary" })).toContainText(`“${unplanned}”`);
   await page.screenshot({ path: `test-results/screens/${info.project.name}-review.png`, fullPage: true });

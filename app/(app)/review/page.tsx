@@ -8,7 +8,16 @@ import { AreaIcon } from "@/lib/icons";
 import type { Area, Goal } from "@/lib/types";
 
 const hrs = (min: number) => (min === 0 ? "0h" : `${Math.round((min / 60) * 10) / 10}h`);
-const plain = (html: string) => html.replace(/<\/(p|h\d|li|blockquote)>/g, " ").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+const plain = (html: string) =>
+  html
+    .replace(/<\/(p|h\d|li|blockquote)>/g, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .split("\n")
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .join(" · ");
 const quote = (s: string) => `“${s}”`;
 const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
@@ -31,7 +40,15 @@ export default function ReviewPage() {
     const weekBlocks = new Set(blocks.map((b) => b.id));
     const active = goals.filter((g) => g.status === "active");
     const scheduled = (g: Goal) => items.filter((i) => i.goal_id === g.id && i.block_id && weekBlocks.has(i.block_id)).length;
-    const minutes = (a: Area) => blocks.filter((b) => b.area_id === a.id).reduce((s, b) => s + b.length_min, 0);
+    // A block counts toward its own area, or, if it has none, the area most of its actions are in.
+    const areaOf = (b: (typeof blocks)[number]) => {
+      if (b.area_id) return b.area_id;
+      const n = new Map<string, number>();
+      for (const i of items) if (i.block_id === b.id && i.area_id) n.set(i.area_id, (n.get(i.area_id) ?? 0) + 1);
+      return [...n].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
+    };
+    const blockArea = new Map(blocks.map((b) => [b.id, areaOf(b)]));
+    const minutes = (a: Area) => blocks.filter((b) => blockArea.get(b.id) === a.id).reduce((s, b) => s + b.length_min, 0);
     const per = areas.map((a) => ({
       area: a,
       min: minutes(a),
@@ -42,7 +59,8 @@ export default function ReviewPage() {
     const unplanned = per.flatMap((p) => p.goals.filter((x) => x.n === 0).map((x) => x.g));
     const total = blocks.reduce((s, b) => s + b.length_min, 0);
     const inbox = items.filter((i) => !i.area_id).length;
-    return { per, unplanned, total, inbox };
+    const loose = blocks.filter((b) => !blockArea.get(b.id)).length;
+    return { per, unplanned, total, inbox, loose };
   }, [areas, blocks, items, goals, focuses, done]);
 
   if (loading) return null;
@@ -52,8 +70,11 @@ export default function ReviewPage() {
   const summary = [
     `You have ${blocks.length} block${blocks.length === 1 ? "" : "s"} over the next 7 days (${hrs(r.total)}).`,
     busiest && busiest.min > 0 ? `Most of that time goes to ${busiest.area.name} (${hrs(busiest.min)}).` : "",
-    empty.length && blocks.length ? `${list(empty)} ${empty.length > 1 ? "have" : "has"} no blocks.` : "",
-    r.unplanned.length
+    r.loose ? `${r.loose} block${r.loose === 1 ? " isn't" : "s aren't"} tied to an area yet.` : "",
+    !empty.length || !blocks.length ? "" : empty.length <= 3 ? `${list(empty)} ${empty.length > 1 ? "have" : "has"} no blocks.` : `${empty.length} areas have no blocks.`,
+    r.unplanned.length > 3
+      ? `${r.unplanned.length} goals have nothing scheduled this week (marked below).`
+      : r.unplanned.length
       ? `${list(r.unplanned.map((g) => quote(g.goal)))} ${r.unplanned.length > 1 ? "have" : "has"} nothing scheduled this week.`
       : goals.some((g) => g.status === "active")
         ? "Every active goal has something scheduled."
