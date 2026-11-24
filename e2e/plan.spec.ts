@@ -14,7 +14,9 @@ async function newProject(page: Page, area: string, title: string) {
   const t = page.getByLabel("Project title");
   await expect(t).toHaveValue("New project");
   await t.fill(title);
+  const saved = page.waitForResponse((r) => r.url().includes("/rest/v1/projects") && r.request().method() === "PATCH" && r.ok());
   await t.press("Enter");
+  await saved; // tests reload right after, so the title must be saved first
   await expect(t).toHaveValue(title);
 }
 
@@ -33,6 +35,7 @@ test("a long project title wraps instead of being cut off", async ({ page }) => 
   const fits = await t.evaluate((el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1);
   expect(fits).toBe(true);
   await t.press("Enter"); // Enter saves, it does not add a line
+  await expect(t).toHaveValue(title);
   await page.reload();
   await expect(page.getByLabel("Project title")).toHaveValue(title);
   await noErrors(page);

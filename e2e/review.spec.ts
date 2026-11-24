@@ -19,7 +19,9 @@ async function newGoal(page: Page, area: string, goal: string) {
   await page.getByRole("button", { name: `New goal in ${area}` }).click();
   await page.waitForURL("**/goals/*");
   await page.getByLabel("Goal", { exact: true }).fill(goal);
+  const saved = page.waitForResponse((r) => r.url().includes("/rest/v1/goals") && r.request().method() === "PATCH" && r.ok());
   await page.getByLabel("Goal", { exact: true }).press("Enter");
+  await saved;
   await expect(page.getByLabel("Goal", { exact: true })).toHaveValue(goal);
 }
 
