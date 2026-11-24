@@ -123,7 +123,7 @@ begin
   select count(*) into n from public.projects where id = pid and goal_text = 'Book flights and cabin';
   if n <> 1 then raise exception 'project goal_text not saved'; end if;
 
-  insert into public.reviews (week_of, mission_text, resolutions_text, step_completed)
+  insert into public.reviews (week_start, mission_text, resolutions_text, step_completed)
     values ('2026-11-23', 'Be present', 'Exercise 3x/week', 2) returning id into rid;
   select count(*) into n from public.reviews where id = rid and step_completed = 2;
   if n <> 1 then raise exception 'review wizard state not saved'; end if;
