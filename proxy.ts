@@ -3,6 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Refreshes the Supabase session on every request and sends signed-out visitors to /login.
 export async function proxy(request: NextRequest) {
+  // If Supabase falls back to the Site URL (e.g. "/?code=..."), finish sign-in at the callback.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && !request.nextUrl.pathname.startsWith("/auth/callback")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    url.search = `?code=${encodeURIComponent(code)}`;
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
