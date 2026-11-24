@@ -27,6 +27,8 @@ test("a focus can be typed and formatted, and it saves", async ({ page }, info) 
   await page.keyboard.type("Psalms before email");
   await page.getByLabel("Add a note").click(); // leaving the editor saves it
   await expect(page.getByText(/^since /)).toBeVisible();
+  // The hint only shows while the editor is empty, never on top of what you typed.
+  await expect(editor.locator(".is-editor-empty")).toHaveCount(0);
 
   await page.reload();
   const again = page.getByRole("textbox", { name: `${name} focus` });

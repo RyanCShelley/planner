@@ -2,6 +2,7 @@
 
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Placeholder } from "@tiptap/extensions";
 import { useEffect, useRef } from "react";
 
 const DELAY = 800; // save this long after typing stops, and on leaving the editor
@@ -17,7 +18,10 @@ export function RichText({ value, onSave, label, placeholder }: { value: string;
   const editable = !!onSave;
 
   const editor = useEditor({
-    extensions: [StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: !editable, autolink: true } })],
+    extensions: [
+      StarterKit.configure({ heading: { levels: [2, 3] }, link: { openOnClick: !editable, autolink: true } }),
+      Placeholder.configure({ placeholder: placeholder ?? "" }),
+    ],
     content: value,
     editable,
     immediatelyRender: false,
@@ -47,15 +51,10 @@ export function RichText({ value, onSave, label, placeholder }: { value: string;
   // Save anything pending when leaving the page.
   useEffect(() => () => editor && !editor.isDestroyed ? flush(editor.getHTML()) : undefined, [editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const empty = useEditorState({ editor, selector: (s) => s.editor?.isEmpty ?? true });
-
   return (
     <div className="space-y-2">
       {editable && editor && <Toolbar editor={editor} />}
-      <div className="relative">
-        {empty && placeholder && <p className="pointer-events-none absolute text-sm text-muted/40">{placeholder}</p>}
-        <EditorContent editor={editor} />
-      </div>
+      <EditorContent editor={editor} />
     </div>
   );
 }
