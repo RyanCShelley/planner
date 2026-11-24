@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "./supabase/client";
-import type { Area, Block, Capture, Goal, Item, Project, ScheduleRule } from "./types";
+import type { Area, AreaFocus, Block, Capture, FocusNote, Goal, Item, Project, ScheduleRule } from "./types";
 
 export const db = () => createClient();
 
@@ -129,4 +129,24 @@ export async function fillScheduleBlocks(today: string) {
   const { data, error } = await db().rpc("fill_rule_blocks", { p_today: today, p_days: 14 });
   if (error) showError(error.message);
   else if (data) changed();
+}
+
+/** An area's focuses, newest first. The first one with no end date is the current focus. */
+export function useFocuses(areaId: string) {
+  const { rows } = useTable<AreaFocus>(
+    "area_focuses",
+    () => db().from("area_focuses").select("*").eq("area_id", areaId).order("started_on", { ascending: false }).order("created_at", { ascending: false }),
+    [areaId],
+  );
+  return { focuses: rows ?? [], loading: rows === null };
+}
+
+export function useFocusNotes(focusIds: string[]) {
+  const key = focusIds.join(",");
+  const { rows } = useTable<FocusNote>(
+    "focus_notes",
+    () => db().from("focus_notes").select("*").in("focus_id", focusIds.length ? focusIds : ["00000000-0000-0000-0000-000000000000"]).order("created_at"),
+    [key],
+  );
+  return { notes: rows ?? [] };
 }

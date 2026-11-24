@@ -1,7 +1,7 @@
 export type AreaColor = "amber" | "terra" | "coral" | "teal" | "ink";
 export const AREA_COLORS: AreaColor[] = ["amber", "terra", "coral", "teal", "ink"];
 
-export type Area = { id: string; name: string; icon: string; color: AreaColor; sort: number };
+export type Area = { id: string; name: string; icon: string; color: AreaColor; sort: number; context: string | null };
 
 export type Repeat = "never" | "daily" | "weekdays" | "weekly" | "biweekly" | "monthly" | "days";
 
@@ -76,3 +76,12 @@ export type ScheduleRule = {
   length_min: number;
   pinned_time: string | null;
 };
+export type AreaFocus = {
+  id: string;
+  area_id: string;
+  body: string; // rich text (HTML)
+  started_on: string;
+  ended_on: string | null; // null = current
+};
+
+export type FocusNote = { id: string; focus_id: string; body: string; created_at: string };

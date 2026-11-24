@@ -85,6 +85,25 @@ begin
   insert into public.schedule_rules (project_id, name, days) values (pid, 'Reading', '{2}');
 end $$;
 
+-- 2c. Area Focus: one current focus per area; starting a new one keeps the old as history.
+do $$
+declare n int; fam uuid; f1 uuid;
+begin
+  select id into fam from public.areas where name = 'Family';
+  update public.areas set context = '<p>Five kids, one farm.</p>' where id = fam;
+  insert into public.area_focuses (area_id, body) values (fam, '<p>Evenings with the kids</p>') returning id into f1;
+  insert into public.focus_notes (focus_id, body) values (f1, 'Good week');
+  begin
+    insert into public.area_focuses (area_id, body) values (fam, '<p>second current</p>');
+    raise exception 'an area got two current focuses';
+  exception when unique_violation then null; -- expected
+  end;
+  update public.area_focuses set ended_on = current_date where id = f1;
+  insert into public.area_focuses (area_id, body) values (fam, '<p>Family dinners</p>');
+  select count(*) into n from public.area_focuses where area_id = fam;
+  if n <> 2 then raise exception 'focus history has % entries, expected 2', n; end if;
+end $$;
+
 -- 3. Another user sees none of it and cannot write into it.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b0","role":"authenticated"}', true);
 do $$
@@ -98,6 +117,10 @@ begin
   if n <> 0 then raise exception 'user B can see user A''s projects'; end if;
   select count(*) into n from public.captures;
   if n <> 0 then raise exception 'user B can see user A''s captures'; end if;
+  select count(*) into n from public.area_focuses;
+  if n <> 0 then raise exception 'user B can see user A''s focus'; end if;
+  select count(*) into n from public.focus_notes;
+  if n <> 0 then raise exception 'user B can see user A''s focus notes'; end if;
   update public.areas set name = 'hacked' where user_id = '00000000-0000-0000-0000-0000000000a0';
   select count(*) into n from public.areas where name = 'hacked';
   if n <> 0 then raise exception 'user B changed user A''s area'; end if;
