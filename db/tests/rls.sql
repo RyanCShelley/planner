@@ -41,6 +41,50 @@ begin
   insert into public.areas (name) values ('Side project');
 end $$;
 
+-- 2b. A project schedule puts blocks on the board once per day, and only once.
+do $$
+declare n int; fld uuid; pid uuid; rid uuid; gid uuid;
+begin
+  select id into fld from public.areas where name = 'Field & Function';
+  insert into public.projects (area_id, title) values (fld, 'Thesis') returning id into pid;
+  insert into public.goals (area_id, project_id, goal, target_date) values (fld, pid, 'Submit chapter 3', '2027-01-15') returning id into gid;
+  insert into public.captures (project_id, kind, text) values (pid, 'communication', 'Email my advisor');
+  -- Mon, Wed, Fri mornings. 2026-11-23 is a Monday, so 14 days hold 6 of them.
+  insert into public.schedule_rules (project_id, name, days, part_of_day, length_min)
+    values (pid, 'Writing', '{1,3,5}', 'morning', 90) returning id into rid;
+
+  n := public.fill_rule_blocks('2026-11-23', 14);
+  if n <> 6 then raise exception 'schedule made % blocks, expected 6', n; end if;
+  select count(*) into n from public.blocks where rule_id = rid and name = 'Thesis' and area_id = fld and length_min = 90;
+  if n <> 6 then raise exception 'schedule blocks have the wrong name, area or length'; end if;
+
+  n := public.fill_rule_blocks('2026-11-23', 14);
+  if n <> 0 then raise exception 'second fill made % more blocks, expected 0', n; end if;
+
+  -- A block Ryan deletes stays deleted.
+  delete from public.blocks where id = (select id from public.blocks where rule_id = rid order by date limit 1);
+  n := public.fill_rule_blocks('2026-11-23', 14);
+  if n <> 0 then raise exception 'a deleted schedule block came back'; end if;
+
+  -- A day later, only the new day is added (2026-12-07 is a Monday).
+  n := public.fill_rule_blocks('2026-11-24', 14);
+  if n <> 1 then raise exception 'next day fill made % blocks, expected 1', n; end if;
+
+  -- Paused projects get no new blocks.
+  update public.projects set status = 'paused' where id = pid;
+  n := public.fill_rule_blocks('2026-11-30', 14);
+  if n <> 0 then raise exception 'paused project got % blocks', n; end if;
+  update public.projects set status = 'active' where id = pid;
+
+  -- Removing the schedule removes its blocks.
+  delete from public.schedule_rules where id = rid;
+  select count(*) into n from public.blocks where project_id = pid;
+  if n <> 0 then raise exception 'removing a schedule left % blocks', n; end if;
+
+  -- Re-add for the other-user check below.
+  insert into public.schedule_rules (project_id, name, days) values (pid, 'Reading', '{2}');
+end $$;
+
 -- 3. Another user sees none of it and cannot write into it.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b0","role":"authenticated"}', true);
 do $$
@@ -48,6 +92,12 @@ declare n int;
 begin
   select count(*) into n from public.items;
   if n <> 0 then raise exception 'user B can see % of user A''s items', n; end if;
+  n := public.fill_rule_blocks('2026-11-23', 14);
+  if n <> 0 then raise exception 'user B''s fill made % blocks from user A''s schedule', n; end if;
+  select count(*) into n from public.projects;
+  if n <> 0 then raise exception 'user B can see user A''s projects'; end if;
+  select count(*) into n from public.captures;
+  if n <> 0 then raise exception 'user B can see user A''s captures'; end if;
   update public.areas set name = 'hacked' where user_id = '00000000-0000-0000-0000-0000000000a0';
   select count(*) into n from public.areas where name = 'hacked';
   if n <> 0 then raise exception 'user B changed user A''s area'; end if;

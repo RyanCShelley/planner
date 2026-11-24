@@ -6,7 +6,9 @@ import { repeatLabel } from "@/lib/repeat";
 import { dayLabel, today } from "@/lib/dates";
 import { completeItem, db, mutate } from "@/lib/data";
 
-export function ItemRow({ item, areas, onOpen }: { item: Item; areas: Area[]; onOpen: (i: Item) => void }) {
+type Select = { selected: Set<string>; toggle: (id: string) => void };
+
+export function ItemRow({ item, areas, onOpen, select }: { item: Item; areas: Area[]; onOpen: (i: Item) => void; select?: Select }) {
   const [busy, setBusy] = useState(false);
   const area = areas.find((a) => a.id === item.area_id);
   const rep = repeatLabel(item);
@@ -24,6 +26,15 @@ export function ItemRow({ item, areas, onOpen }: { item: Item; areas: Area[]; on
 
   return (
     <li className={`group flex items-center gap-3 px-4 py-3 transition ${busy ? "opacity-40" : ""}`}>
+      {select ? (
+        <input
+          type="checkbox"
+          checked={select.selected.has(item.id)}
+          onChange={() => select.toggle(item.id)}
+          aria-label={`Select ${item.title}`}
+          className="size-5 shrink-0 accent-[var(--accent)]"
+        />
+      ) : (
       <button
         onClick={done}
         disabled={busy}
@@ -34,6 +45,7 @@ export function ItemRow({ item, areas, onOpen }: { item: Item; areas: Area[]; on
       >
         {item.done_at ? "✓" : null}
       </button>
+      )}
       <button onClick={() => onOpen(item)} className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm">
         <span className="size-2 shrink-0 rounded-full" style={{ background: area ? `var(--area-${area.color})` : "var(--line)" }} />
         <span className={`truncate ${item.done_at ? "text-muted/40 line-through" : ""}`}>{item.title}</span>
@@ -47,12 +59,12 @@ export function ItemRow({ item, areas, onOpen }: { item: Item; areas: Area[]; on
   );
 }
 
-export function ItemList({ items, areas, onOpen, empty }: { items: Item[]; areas: Area[]; onOpen: (i: Item) => void; empty?: string }) {
+export function ItemList({ items, areas, onOpen, empty, select }: { items: Item[]; areas: Area[]; onOpen: (i: Item) => void; empty?: string; select?: Select }) {
   if (!items.length) return <p className="px-1 py-6 text-sm text-muted/50">{empty ?? "Nothing here."}</p>;
   return (
     <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
       {items.map((i) => (
-        <ItemRow key={i.id} item={i} areas={areas} onOpen={onOpen} />
+        <ItemRow key={i.id} item={i} areas={areas} onOpen={onOpen} select={select} />
       ))}
     </ul>
   );

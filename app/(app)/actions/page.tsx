@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Area, Block, Item, Part } from "@/lib/types";
 import { PARTS, blockTime, fmtTime, toHours } from "@/lib/blocks";
 import { addDays, dayLabel, today } from "@/lib/dates";
-import { changed, completeItem, db, mutate, showError, useAreas, useBlocks, useItems } from "@/lib/data";
+import { changed, completeItem, db, fillScheduleBlocks, mutate, showError, useAreas, useBlocks, useItems } from "@/lib/data";
 import { AreaIcon } from "@/lib/icons";
 import { repeatLabel } from "@/lib/repeat";
 import { ItemSheet } from "@/components/item-sheet";
@@ -46,6 +46,11 @@ export default function ActionsPage() {
   const pastIds = new Set(past.map((b) => b.id));
   const [openItem, setOpenItem] = useState<Item | null>(null);
   const [openBlock, setOpenBlock] = useState<Block | null>(null);
+
+  // Project schedules put their blocks on the board for the next two weeks.
+  useEffect(() => {
+    fillScheduleBlocks(today());
+  }, []);
 
   async function newBlock(date: string, part: Part, area_id: string | null = null) {
     const area = areas.find((a) => a.id === area_id);
@@ -103,14 +108,6 @@ export default function ActionsPage() {
             </button>
           ))}
         </div>
-        <span className="hidden md:block">
-          <IconBtn
-            label={bench === "on" ? "Hide Work bench" : "Show Work bench"}
-            onClick={() => setBench(bench === "on" ? "off" : "on")}
-            d="M4 5h16v14H4zM10 5v14"
-            active={bench === "on"}
-          />
-        </span>
       </div>
 
       {/* iPhone: one day at a time */}
@@ -127,7 +124,13 @@ export default function ActionsPage() {
 
       {/* Mac: Work bench + scrolling day columns */}
       <div className="hidden flex-1 overflow-hidden md:flex">
-        {bench === "on" && <BenchColumn ctx={ctx} />}
+        {bench === "on" ? (
+          <BenchColumn ctx={ctx} onHide={() => setBench("off")} />
+        ) : (
+          <div className="shrink-0 border-r border-line px-1 py-3">
+            <IconBtn label="Show Work bench" onClick={() => setBench("on")} d="M4 5h16v14H4zM10 5v14M14 10l2 2-2 2" />
+          </div>
+        )}
         <div className="flex flex-1 overflow-x-auto">
           {days.map((d) => (
             <DayColumn key={d} date={d} ctx={ctx} />
@@ -327,16 +330,19 @@ function Hourly({ date, blocks, ctx }: { date: string; blocks: Block[]; ctx: Ctx
   );
 }
 
-function BenchColumn({ ctx }: { ctx: Ctx }) {
+function BenchColumn({ ctx, onHide }: { ctx: Ctx; onHide: () => void }) {
   const open = ctx.items.filter((i) => !i.block_id || ctx.pastIds.has(i.block_id));
   const groups = [...ctx.areas.map((a) => ({ key: a.id, area: a as Area | null })), { key: "inbox", area: null }]
     .map((g) => ({ ...g, items: open.filter((i) => (i.area_id ?? "inbox") === g.key) }))
     .filter((g) => g.items.length);
   return (
     <Drop onDrop={(p) => ctx.drop(p, { bench: true })} label="Work bench" className="w-72 shrink-0 overflow-y-auto border-r border-line bg-surface/40">
-      <header className="sticky top-0 z-10 bg-bg/95 px-4 py-3">
-        <div className="text-sm font-medium">Work bench</div>
-        <div className="text-xs text-muted/50">{open.length} unscheduled · drag onto a day</div>
+      <header className="sticky top-0 z-10 flex items-start bg-bg/95 px-4 py-3">
+        <div className="flex-1">
+          <div className="text-sm font-medium">Work bench</div>
+          <div className="text-xs text-muted/50">{open.length} unscheduled · drag onto a day</div>
+        </div>
+        <IconBtn label="Hide Work bench" onClick={onHide} d="M4 5h16v14H4zM10 5v14M16 10l-2 2 2 2" />
       </header>
       <div className="space-y-4 px-2 pb-6">
         {groups.map((g) => (
