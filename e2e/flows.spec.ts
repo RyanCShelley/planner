@@ -107,7 +107,7 @@ test("areas can be added, renamed and removed", async ({ page }) => {
 test("no page scrolls sideways, even with a long title", async ({ page }) => {
   const t = uid("A very long action title that keeps going well past the width of an iPhone screen");
   await quickAdd(page, t);
-  for (const path of ["/inbox", "/bench", "/areas"]) {
+  for (const path of ["/inbox", "/bench", "/areas", "/actions"]) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
     const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);

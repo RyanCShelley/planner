@@ -66,6 +66,23 @@ jobs:
           npx playwright install --with-deps chromium
           npx playwright test
 
+      # Also print them, collapsed, so they can be reviewed from the job log.
+      - name: Screenshots in the log
+        if: always()
+        run: |
+          for f in test-results/screens/*.png; do
+            [ -f "$f" ] || continue
+            echo "::group::screenshot $f"; base64 -w0 "$f"; echo; echo "::endgroup::"
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screens
+          path: test-results/screens/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
