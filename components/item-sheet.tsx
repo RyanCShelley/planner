@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Area, Item, Repeat } from "@/lib/types";
 import { REPEATS, WD } from "@/lib/repeat";
-import { completeItem, db } from "@/lib/data";
+import { completeItem, db, mutate } from "@/lib/data";
 
 const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 const label = "mb-1 block text-xs text-muted/60";
@@ -19,19 +19,23 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
   async function save() {
     if (!d) return;
     const { id, title, notes, area_id, due_date, repeat, repeat_days, must } = d;
-    await db()
+    await mutate(db()
       .from("items")
       .update({ title: title.trim() || "Untitled", notes, area_id, due_date, repeat, repeat_days: repeat === "days" ? repeat_days : null, must })
-      .eq("id", id);
+      .eq("id", id));
     onClose();
   }
   async function remove() {
-    await db().from("items").delete().eq("id", d!.id);
+    await mutate(db().from("items").delete().eq("id", d!.id));
     onClose();
   }
   async function done() {
     await save();
     await completeItem(d!.id);
+  }
+  async function reopen() {
+    await mutate(db().from("items").update({ done_at: null }).eq("id", d!.id));
+    onClose();
   }
   const toggleDay = (n: number) => {
     const cur = new Set(d.repeat_days ?? []);
@@ -107,12 +111,18 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
         </label>
 
         <div className="flex items-center gap-2 pt-2">
-          <button onClick={done} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">
-            Done
-          </button>
-          <button onClick={save} className="rounded-lg border border-line px-4 py-2 text-sm">
+          <button onClick={save} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">
             Save
           </button>
+          {d.done_at ? (
+            <button onClick={reopen} className="rounded-lg border border-line px-4 py-2 text-sm">
+              Reopen
+            </button>
+          ) : (
+            <button onClick={done} className="rounded-lg border border-line px-4 py-2 text-sm">
+              ✓ Mark complete
+            </button>
+          )}
           <button onClick={remove} className="ml-auto text-sm text-area-coral/80 hover:text-area-coral">
             Delete
           </button>

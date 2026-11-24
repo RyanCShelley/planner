@@ -6,11 +6,31 @@ import type { Area, Item } from "./types";
 
 export const db = () => createClient();
 
+// After any write, every list on screen reloads, even if a realtime update is late or missing.
+const CHANGED = "planner:changed";
+export const changed = () => window.dispatchEvent(new Event(CHANGED));
+
+// Errors are shown instead of failing silently.
+export const ERROR = "planner:error";
+export const showError = (message: string) => window.dispatchEvent(new CustomEvent(ERROR, { detail: message }));
+
+/** Run a Supabase write; show its error if it fails, then refresh lists. Returns false on error. */
+export async function mutate(q: PromiseLike<{ error: { message: string } | null }>): Promise<boolean> {
+  const { error } = await q;
+  if (error) showError(error.message);
+  changed();
+  return !error;
+}
+
 // Loads a table and reloads it whenever it changes on any device (Supabase realtime).
 function useTable<T>(table: string, load: () => PromiseLike<{ data: T[] | null }>, deps: unknown[] = []) {
   const [rows, setRows] = useState<T[] | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const reload = useCallback(async () => setRows((await load()).data ?? []), deps);
+  const reload = useCallback(async () => {
+    const res = (await load()) as { data: T[] | null; error?: { message: string } | null };
+    if (res.error) showError(res.error.message);
+    setRows(res.data ?? []);
+  }, deps);
 
   useEffect(() => {
     reload();
@@ -18,7 +38,9 @@ function useTable<T>(table: string, load: () => PromiseLike<{ data: T[] | null }
       .channel(`${table}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table }, () => reload())
       .subscribe();
+    window.addEventListener(CHANGED, reload);
     return () => {
+      window.removeEventListener(CHANGED, reload);
       db().removeChannel(ch);
     };
   }, [reload, table]);
@@ -55,6 +77,10 @@ export async function completeItem(id: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` },
   });
-  if (!res.ok) throw new Error(await res.text());
+  changed();
+  if (!res.ok) {
+    showError(`Couldn't mark it done (${res.status}).`);
+    throw new Error(await res.text());
+  }
   return (await res.json()) as { next_due: string | null };
 }

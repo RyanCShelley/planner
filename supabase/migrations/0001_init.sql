@@ -141,6 +141,11 @@ create table public.reviews (
   unique (user_id, week_start)
 );
 
+-- Newer Supabase projects don't grant table access to signed-in users by default.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+
 -- Row-level security + updated_at on every table ------------------------------
 do $$
 declare t text;
@@ -178,3 +183,16 @@ create trigger seed_areas after insert on auth.users
 -- Realtime sync between Mac and iPhone
 alter publication supabase_realtime add table
   public.areas, public.projects, public.goals, public.blocks, public.items, public.captures;
+
+-- Accounts created before this script ran get their areas too.
+insert into public.areas (user_id, name, icon, color, sort)
+select u.id, a.name, a.icon, a.color, a.sort
+from auth.users u
+cross join (values
+  ('Faith','cross','amber',1),
+  ('Fortitude','mountain','terra',2),
+  ('Family','people','coral',3),
+  ('Field & Function','briefcase','teal',4),
+  ('General','house','ink',5)
+) as a(name, icon, color, sort)
+where not exists (select 1 from public.areas x where x.user_id = u.id);

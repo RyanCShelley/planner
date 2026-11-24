@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AreaIcon } from "@/lib/icons";
-import { db, useAreas } from "@/lib/data";
+import { db, mutate, useAreas } from "@/lib/data";
 import type { Area } from "@/lib/types";
 
 // Add, reorder and remove areas. Rename, icon and color live on each area's page.
@@ -14,7 +14,7 @@ export default function AreasPage() {
   async function add() {
     if (!name.trim()) return;
     const sort = Math.max(0, ...areas.map((a) => a.sort)) + 1;
-    await db().from("areas").insert({ name: name.trim(), sort });
+    await mutate(db().from("areas").insert({ name: name.trim(), sort }));
     setName("");
     reload();
   }
@@ -24,8 +24,8 @@ export default function AreasPage() {
     const b = areas[i + dir];
     if (!b) return;
     await Promise.all([
-      db().from("areas").update({ sort: b.sort }).eq("id", a.id),
-      db().from("areas").update({ sort: a.sort }).eq("id", b.id),
+      mutate(db().from("areas").update({ sort: b.sort }).eq("id", a.id)),
+      mutate(db().from("areas").update({ sort: a.sort }).eq("id", b.id)),
     ]);
     reload();
   }

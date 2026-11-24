@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AreaIcon, ICON_CHOICES } from "@/lib/icons";
-import { db, useAreas, useItems } from "@/lib/data";
+import { db, mutate, useAreas, useItems } from "@/lib/data";
 import { AREA_COLORS, type Area, type Item } from "@/lib/types";
 import { QuickAdd } from "@/components/quick-add";
 import { ItemList } from "@/components/item-row";
@@ -25,7 +25,7 @@ export default function AreaPage() {
   if (!area) return null;
 
   async function update(patch: Partial<Area>) {
-    await db().from("areas").update(patch).eq("id", id);
+    await mutate(db().from("areas").update(patch).eq("id", id));
     reload();
   }
 
@@ -35,12 +35,11 @@ export default function AreaPage() {
     const target = moveTo === "inbox" ? null : moveTo;
     const s = db();
     if (target) {
-      await s.from("projects").update({ area_id: target }).eq("area_id", id);
-      await s.from("goals").update({ area_id: target }).eq("area_id", id);
+      await mutate(s.from("projects").update({ area_id: target }).eq("area_id", id));
+      await mutate(s.from("goals").update({ area_id: target }).eq("area_id", id));
     }
-    await s.from("items").update({ area_id: target }).eq("area_id", id);
-    const { error } = await s.from("areas").delete().eq("id", id);
-    if (!error) router.push("/areas");
+    await mutate(s.from("items").update({ area_id: target }).eq("area_id", id));
+    if (await mutate(s.from("areas").delete().eq("id", id))) router.push("/areas");
   }
 
   const others = areas.filter((a) => a.id !== id);

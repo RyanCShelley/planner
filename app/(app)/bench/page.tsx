@@ -11,7 +11,8 @@ import type { Item } from "@/lib/types";
 // The full list of open actions, grouped by area.
 export default function BenchPage() {
   const { areas } = useAreas();
-  const { items, loading } = useItems();
+  const [showDone, setShowDone] = useState(false);
+  const { items, loading } = useItems({ open: !showDone });
   const [open, setOpen] = useState<Item | null>(null);
   const [only, setOnly] = useState<string | null>(null);
 
@@ -37,6 +38,9 @@ export default function BenchPage() {
             {a.name}
           </Chip>
         ))}
+        <Chip on={showDone} onClick={() => setShowDone(!showDone)}>
+          Show completed
+        </Chip>
       </div>
       {!loading && !groups.length && <p className="text-sm text-muted/50">No open actions.</p>}
       {groups.map((g) => (
