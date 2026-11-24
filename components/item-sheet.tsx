@@ -33,6 +33,10 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
     await save();
     await completeItem(d!.id);
   }
+  async function reopen() {
+    await mutate(db().from("items").update({ done_at: null }).eq("id", d!.id));
+    onClose();
+  }
   const toggleDay = (n: number) => {
     const cur = new Set(d.repeat_days ?? []);
     if (cur.has(n)) cur.delete(n);
@@ -107,12 +111,18 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
         </label>
 
         <div className="flex items-center gap-2 pt-2">
-          <button onClick={done} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">
-            Done
-          </button>
-          <button onClick={save} className="rounded-lg border border-line px-4 py-2 text-sm">
+          <button onClick={save} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">
             Save
           </button>
+          {d.done_at ? (
+            <button onClick={reopen} className="rounded-lg border border-line px-4 py-2 text-sm">
+              Reopen
+            </button>
+          ) : (
+            <button onClick={done} className="rounded-lg border border-line px-4 py-2 text-sm">
+              ✓ Mark complete
+            </button>
+          )}
           <button onClick={remove} className="ml-auto text-sm text-area-coral/80 hover:text-area-coral">
             Delete
           </button>
