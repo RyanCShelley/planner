@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Area, Item, Repeat } from "@/lib/types";
+import type { Area, Item, ItemStatus, Repeat } from "@/lib/types";
 import { REPEATS, WD } from "@/lib/repeat";
-import { completeItem, db, mutate, useBlocks, useGoals } from "@/lib/data";
+import { completeItem, db, mutate, useBlocks, useGoals, useSubRoles } from "@/lib/data";
 import { addDays, dayLabel, today } from "@/lib/dates";
 import { PARTS } from "@/lib/blocks";
 
@@ -20,10 +20,25 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
 
   async function save() {
     if (!d) return;
-    const { id, title, notes, area_id, goal_id, project_id, due_date, repeat, repeat_days, must, block_id } = d;
+    const { id, title, notes, area_id, sub_role_id, goal_id, project_id, due_date, repeat, repeat_days, must, block_id, status, waiting_on, batch_tag } = d;
     await mutate(db()
       .from("items")
-      .update({ title: title.trim() || "Untitled", notes, area_id, goal_id, project_id, due_date, repeat, repeat_days: repeat === "days" ? repeat_days : null, must, block_id })
+      .update({
+        title: title.trim() || "Untitled",
+        notes,
+        area_id,
+        sub_role_id: area_id ? sub_role_id : null,
+        goal_id,
+        project_id,
+        due_date,
+        repeat,
+        repeat_days: repeat === "days" ? repeat_days : null,
+        must,
+        block_id,
+        status: status ?? "active",
+        waiting_on: status === "pending" ? waiting_on : null,
+        batch_tag: batch_tag?.trim() || null,
+      })
       .eq("id", id));
     onClose();
   }
@@ -64,16 +79,55 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
         <div>
           <span className={label}>Area</span>
           <div className="flex flex-wrap gap-2">
-            <Chip on={!d.area_id} onClick={() => set("area_id", null)}>
+            <Chip on={!d.area_id} onClick={() => setD({ ...d, area_id: null, sub_role_id: null })}>
               Inbox
             </Chip>
             {areas.map((a) => (
-              <Chip key={a.id} on={d.area_id === a.id} color={a.color} onClick={() => set("area_id", a.id)}>
+              <Chip key={a.id} on={d.area_id === a.id} color={a.color} onClick={() => setD({ ...d, area_id: a.id, sub_role_id: d.area_id === a.id ? d.sub_role_id : null })}>
                 {a.name}
               </Chip>
             ))}
           </div>
         </div>
+
+        <SubRolePicker areaId={d.area_id} value={d.sub_role_id} onChange={(v) => set("sub_role_id", v)} />
+
+        <div>
+          <span className={label}>Status</span>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["active", "Active"],
+              ["sometimes", "Sometimes"],
+              ["pending", "Pending / Waiting"],
+            ] as [ItemStatus, string][]).map(([val, lbl]) => (
+              <Chip key={val} on={(d.status ?? "active") === val} onClick={() => set("status", val)}>
+                {lbl}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        {d.status === "pending" && (
+          <label className="block">
+            <span className={label}>Waiting on</span>
+            <input
+              value={d.waiting_on ?? ""}
+              onChange={(e) => set("waiting_on", e.target.value || null)}
+              placeholder="Who or what are you waiting on?"
+              className={field}
+            />
+          </label>
+        )}
+
+        <label className="block">
+          <span className={label}>Batch tag</span>
+          <input
+            value={d.batch_tag ?? ""}
+            onChange={(e) => set("batch_tag", e.target.value || null)}
+            placeholder="e.g. @calls, @errands, deep-work"
+            className={field}
+          />
+        </label>
 
         <div className="grid grid-cols-2 gap-3">
           <label>
@@ -196,3 +250,24 @@ function GoalPicker({ item, onChange }: { item: Item; onChange: (goal: string | 
     </label>
   );
 }
+
+function SubRolePicker({ areaId, value, onChange }: { areaId: string | null; value: string | null; onChange: (v: string | null) => void }) {
+  const { subRoles } = useSubRoles(areaId ?? undefined);
+  if (!areaId || !subRoles.length) return null;
+  return (
+    <div>
+      <span className={label}>Sub-role</span>
+      <div className="flex flex-wrap gap-2">
+        <Chip on={!value} onClick={() => onChange(null)}>
+          None
+        </Chip>
+        {subRoles.map((sr) => (
+          <Chip key={sr.id} on={value === sr.id} onClick={() => onChange(sr.id)}>
+            {sr.name}
+          </Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
+

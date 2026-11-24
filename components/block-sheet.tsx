@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Area, Block, Part } from "@/lib/types";
 import { LENGTHS, PARTS, fmtLen, partFor, toHours } from "@/lib/blocks";
-import { db, mutate } from "@/lib/data";
+import { db, mutate, syncBlockToGoogleCalendar, useGoogleCalendarConnection } from "@/lib/data";
 import { Chip } from "./item-sheet";
 
 const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
@@ -22,6 +22,7 @@ const fmt12 = (t: string) => {
 
 export function BlockSheet({ block, areas, onClose }: { block: Block | null; areas: Area[]; onClose: () => void }) {
   const [b, setB] = useState<Block | null>(block);
+  const { connected } = useGoogleCalendarConnection();
   useEffect(() => setB(block), [block]);
   if (!b) return null;
 
@@ -33,7 +34,10 @@ export function BlockSheet({ block, areas, onClose }: { block: Block | null; are
     const { id, name, date, part_of_day, length_min, start_time, area_id } = b;
     // A pinned time decides the part of the day.
     const part = start_time ? partFor(toHours(start_time)) : part_of_day;
-    await mutate(db().from("blocks").update({ name: name.trim() || "Block", date, part_of_day: part, length_min, start_time, area_id }).eq("id", id));
+    const ok = await mutate(db().from("blocks").update({ name: name.trim() || "Block", date, part_of_day: part, length_min, start_time, area_id }).eq("id", id));
+    if (ok && connected) {
+      await syncBlockToGoogleCalendar(id).catch(() => {});
+    }
     onClose();
   }
   async function remove() {
@@ -113,7 +117,13 @@ export function BlockSheet({ block, areas, onClose }: { block: Block | null; are
             </select>
           </label>
         </div>
-        {b.start_time && <p className="text-xs text-muted/50">Pinned blocks will go on your Google Calendar once that&apos;s connected (step 5).</p>}
+        {b.start_time && (
+          <p className="text-xs text-muted/50">
+            {connected
+              ? 'Pinned blocks sync to your "Planner" Google Calendar.'
+              : 'Connect Google Calendar in Settings to sync pinned blocks to your "Planner" calendar.'}
+          </p>
+        )}
 
         <div className="flex items-center gap-2 pt-2">
           <button onClick={save} className="rounded-lg bg-button px-4 py-2 text-sm font-medium text-white">

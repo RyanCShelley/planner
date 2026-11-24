@@ -3,13 +3,18 @@ export const AREA_COLORS: AreaColor[] = ["amber", "terra", "coral", "teal", "ink
 
 export type Area = { id: string; name: string; icon: string; color: AreaColor; sort: number; context: string | null };
 
+export type AreaSubRole = { id: string; area_id: string; name: string; sort: number };
+
 export type Repeat = "never" | "daily" | "weekdays" | "weekly" | "biweekly" | "monthly" | "days";
+
+export type ItemStatus = "active" | "sometimes" | "pending";
 
 export type Item = {
   id: string;
   title: string;
   notes: string | null;
   area_id: string | null;
+  sub_role_id: string | null;
   project_id: string | null;
   goal_id: string | null;
   block_id: string | null;
@@ -19,6 +24,9 @@ export type Item = {
   leverage: string | null; // who or what can help
   priority: number | null;
   must: boolean;
+  status: ItemStatus;
+  waiting_on: string | null;
+  batch_tag: string | null;
   done_at: string | null;
   created_at: string;
 };
@@ -45,9 +53,19 @@ export type Project = {
   area_id: string;
   title: string;
   purpose: string | null;
+  goal_text: string | null;
   start_date: string | null;
   finish_date: string | null;
   status: ProjectStatus;
+};
+
+export type Review = {
+  id: string;
+  week_of: string; // YYYY-MM-DD
+  mission_text: string | null;
+  resolutions_text: string | null;
+  step_completed: number;
+  created_at: string;
 };
 
 export type Goal = {

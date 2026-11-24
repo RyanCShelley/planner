@@ -8,7 +8,6 @@ import { AreaIcon } from "@/lib/icons";
 const ICON: Record<string, string> = {
   inbox: "M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6H3v-6z",
   actions: "M4 5h4v14H4zM10 5h4v14h-4zM16 5h4v14h-4z",
-  bench: "M4 6h16M4 12h16M4 18h10",
   projects: "M3 7h7l2 2h9v10H3z",
   review: "M5 4h14v16H5zM9 9l2 2 4-4M9 15h6",
 };
@@ -16,8 +15,7 @@ const ICON: Record<string, string> = {
 // Order agreed with Ryan: Inbox first, then Actions.
 export const NAV = [
   { href: "/inbox", label: "Inbox", icon: "inbox" },
-  { href: "/actions", label: "Actions", icon: "actions" },
-  { href: "/bench", label: "Work bench", short: "Bench", icon: "bench" },
+  { href: "/actions", label: "Actions", short: "Actions", icon: "actions" },
   { href: "/projects", label: "Projects", icon: "projects" },
   { href: "/review", label: "Weekly review", short: "Week", icon: "review" },
 ];
@@ -33,7 +31,7 @@ function Icon({ name }: { name: string }) {
 export function Sidebar() {
   const path = usePathname();
   return (
-    <nav className="hidden w-56 shrink-0 flex-col gap-1 border-r border-line p-4 md:flex">
+    <nav className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line p-4 md:flex">
       <div className="mb-6 px-3 text-sm font-semibold tracking-tight">Planner</div>
       {NAV.map((n) => {
         const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
@@ -51,8 +49,18 @@ export function Sidebar() {
         );
       })}
       <AreaLinks path={path} />
-      <div className="mt-auto">
+      <div className="mt-auto flex items-center justify-between">
         <ThemeToggle />
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className={`rounded-lg p-2 transition ${path.startsWith("/settings") ? "text-accent" : "text-muted/60 hover:text-text"}`}
+        >
+          <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.02 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </Link>
       </div>
     </nav>
   );
@@ -61,7 +69,7 @@ export function Sidebar() {
 export function TabBar() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-bg pb-[env(safe-area-inset-bottom)] md:hidden">
       {NAV.map((n) => {
         const active = (path.startsWith(n.href) || (n.href === "/projects" && path.startsWith("/goals")));
         return (
