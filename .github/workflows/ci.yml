@@ -21,7 +21,7 @@ jobs:
           python-version: "3.13"
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.4.0 # pinned: resolving "latest" hits the GitHub API rate limit
 
       - name: Install
         run: |
