@@ -34,9 +34,17 @@ def current_token(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) 
     """Verify the Supabase access token sent as `Authorization: Bearer <token>`."""
     if creds is None:
         raise HTTPException(401, "Not signed in")
+    token = creds.credentials
     try:
-        key = _jwks().get_signing_key_from_jwt(creds.credentials)
-        jwt.decode(creds.credentials, key.key, algorithms=["ES256", "RS256"], audience="authenticated")
+        # New Supabase projects sign with asymmetric keys (JWKS); older and local ones use a shared secret.
+        if jwt.get_unverified_header(token).get("alg") == "HS256":
+            secret = os.environ.get("SUPABASE_JWT_SECRET")
+            if not secret:
+                raise jwt.InvalidTokenError("HS256 token but SUPABASE_JWT_SECRET is not set")
+            jwt.decode(token, secret, algorithms=["HS256"], audience="authenticated")
+        else:
+            key = _jwks().get_signing_key_from_jwt(token)
+            jwt.decode(token, key.key, algorithms=["ES256", "RS256"], audience="authenticated")
     except jwt.PyJWTError as e:
         raise HTTPException(401, f"Invalid token: {e}") from e
     return creds.credentials

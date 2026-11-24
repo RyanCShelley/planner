@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install
+        run: |
+          npm ci
+          pip install -r requirements.txt uvicorn pytest
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: API tests
+        run: python -m pytest -q tests
+
+      - name: Start a local Supabase
+        run: |
+          supabase init < /dev/null
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,mailpit,storage-api,postgres-meta
+          supabase status -o env | grep "=" | sed -e 's/"//g' -e 's/^/SB_/' | tee -a "$GITHUB_ENV" | sed 's/=.*/=…/'
+
+      - name: Migrations and database checks (same script production runs)
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          DATABASE_URL="$SB_DB_URL" scripts/test-db.sh
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SB_API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SB_ANON_KEY }}
+          NEXT_PUBLIC_E2E: "1"
+          API_URL: http://127.0.0.1:8000
+        run: npx next build
+
+      - name: Browser tests (Mac and iPhone widths)
+        env:
+          CI: "1"
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SB_API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SB_ANON_KEY }}
+          SUPABASE_URL: ${{ env.SB_API_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SB_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ env.SB_JWT_SECRET }}
+          API_URL: http://127.0.0.1:8000
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
