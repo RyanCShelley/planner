@@ -150,3 +150,19 @@ export function useFocusNotes(focusIds: string[]) {
   );
   return { notes: rows ?? [] };
 }
+
+/** The current focus of every area (one per area at most). */
+export function useCurrentFocuses() {
+  const { rows } = useTable<AreaFocus>("area_focuses", () => db().from("area_focuses").select("*").is("ended_on", null));
+  return { focuses: rows ?? [] };
+}
+
+/** Actions finished on or after a date, newest first. */
+export function useDoneSince(from: string) {
+  const { rows } = useTable<Item>(
+    "items",
+    () => db().from("items").select("*").gte("done_at", from).order("done_at", { ascending: false }),
+    [from],
+  );
+  return { done: rows ?? [] };
+}
