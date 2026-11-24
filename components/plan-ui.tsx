@@ -33,6 +33,7 @@ export function EditText({
   label,
   placeholder,
   multiline,
+  wrap,
   autoSelect,
 }: {
   value: string;
@@ -41,6 +42,8 @@ export function EditText({
   label: string;
   placeholder?: string;
   multiline?: boolean;
+  /** One line that wraps and grows instead of scrolling sideways (for titles). Enter still saves. */
+  wrap?: boolean;
   autoSelect?: boolean;
 }) {
   const [v, setV] = useState(value);
@@ -56,6 +59,38 @@ export function EditText({
         onChange={(e) => setV(e.target.value)}
         onBlur={commit}
         className={className}
+      />
+    );
+  if (wrap)
+    return (
+      <textarea
+        value={v}
+        rows={1}
+        placeholder={placeholder}
+        aria-label={label}
+        ref={(el) => {
+          if (!el) return;
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+          if (autoSelect && document.activeElement !== el && !el.dataset.selected) {
+            el.dataset.selected = "1";
+            el.focus();
+            el.select();
+          }
+        }}
+        onChange={(e) => {
+          setV(e.target.value.replace(/\n/g, " "));
+          e.target.style.height = "auto";
+          e.target.style.height = `${e.target.scrollHeight}px`;
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          }
+        }}
+        className={`resize-none overflow-hidden ${className ?? ""}`}
       />
     );
   return (

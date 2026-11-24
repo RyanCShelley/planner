@@ -25,6 +25,19 @@ async function capture(page: Page, text: string, kind: "Idea / want / need" | "C
   await expect(page.getByRole("checkbox", { name: text })).toBeVisible();
 }
 
+test("a long project title wraps instead of being cut off", async ({ page }) => {
+  const title = uid("Rebuild the old barn behind the house before the first snow of the winter");
+  await newProject(page, "Family", title);
+  const t = page.getByLabel("Project title");
+  // Every word is on screen: the field is as tall as its text and nothing scrolls sideways.
+  const fits = await t.evaluate((el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1);
+  expect(fits).toBe(true);
+  await t.press("Enter"); // Enter saves, it does not add a line
+  await page.reload();
+  await expect(page.getByLabel("Project title")).toHaveValue(title);
+  await noErrors(page);
+});
+
 test("a project can be added, named and given a purpose", async ({ page }, info) => {
   const title = uid("Rebuild the barn");
   await newProject(page, "Family", title);

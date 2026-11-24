@@ -77,8 +77,9 @@ export default function ProjectPage() {
           value={p.title}
           onSave={(v) => update({ title: v.trim() || "Untitled project" })}
           label="Project title"
+          wrap
           autoSelect={isNew}
-          className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
+          className="w-full bg-transparent text-xl font-semibold leading-snug tracking-tight outline-none sm:text-2xl"
         />
         <label className="block">
           <span className="mb-1 block text-xs text-muted/60">Purpose: why this project matters</span>

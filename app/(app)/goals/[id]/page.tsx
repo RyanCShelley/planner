@@ -93,8 +93,9 @@ export default function GoalPage() {
           value={g.goal}
           onSave={(v) => update({ goal: v.trim() || "Untitled goal" })}
           label="Goal"
+          wrap
           autoSelect={isNew}
-          className="w-full bg-transparent text-2xl font-semibold tracking-tight outline-none"
+          className="w-full bg-transparent text-xl font-semibold leading-snug tracking-tight outline-none sm:text-2xl"
         />
         <label className="block">
           <span className="mb-1 block text-xs text-muted/60">Purpose: why do I want it?</span>
