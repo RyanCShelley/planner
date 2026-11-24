@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "./supabase/client";
-import type { Area, Item } from "./types";
+import type { Area, Block, Item } from "./types";
 
 export const db = () => createClient();
 
@@ -54,6 +54,15 @@ export function useAreas() {
 }
 
 export type ItemFilter = { inbox?: boolean; areaId?: string; open?: boolean };
+
+export function useBlocks(from: string, to: string) {
+  const { rows, reload } = useTable<Block>(
+    "blocks",
+    () => db().from("blocks").select("*").gte("date", from).lte("date", to).order("start_time", { nullsFirst: false }).order("created_at"),
+    [from, to],
+  );
+  return { blocks: rows ?? [], loading: rows === null, reload };
+}
 
 export function useItems(f: ItemFilter = {}) {
   const { rows, reload } = useTable<Item>(

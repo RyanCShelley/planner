@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import type { Area, Item, Repeat } from "@/lib/types";
 import { REPEATS, WD } from "@/lib/repeat";
-import { completeItem, db, mutate } from "@/lib/data";
+import { completeItem, db, mutate, useBlocks } from "@/lib/data";
+import { addDays, dayLabel, today } from "@/lib/dates";
+import { PARTS } from "@/lib/blocks";
 
 const field = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent";
 const label = "mb-1 block text-xs text-muted/60";
@@ -18,10 +20,10 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
 
   async function save() {
     if (!d) return;
-    const { id, title, notes, area_id, due_date, repeat, repeat_days, must } = d;
+    const { id, title, notes, area_id, due_date, repeat, repeat_days, must, block_id } = d;
     await mutate(db()
       .from("items")
-      .update({ title: title.trim() || "Untitled", notes, area_id, due_date, repeat, repeat_days: repeat === "days" ? repeat_days : null, must })
+      .update({ title: title.trim() || "Untitled", notes, area_id, due_date, repeat, repeat_days: repeat === "days" ? repeat_days : null, must, block_id })
       .eq("id", id));
     onClose();
   }
@@ -100,6 +102,8 @@ export function ItemSheet({ item, areas, onClose }: { item: Item | null; areas: 
           </div>
         )}
 
+        <BlockPicker value={d.block_id} onChange={(v) => set("block_id", v)} />
+
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={d.must} onChange={(e) => set("must", e.target.checked)} className="accent-[var(--accent)]" />
           Must ★
@@ -141,5 +145,26 @@ export function Chip({ on, color, onClick, children }: { on: boolean; color?: st
     >
       {children}
     </button>
+  );
+}
+
+// Put an action into a block without dragging (the way to schedule on iPhone).
+function BlockPicker({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  const from = today();
+  const { blocks } = useBlocks(from, addDays(from, 13));
+  const order = (p: string) => PARTS.findIndex((x) => x.id === p);
+  const sorted = [...blocks].sort((a, b) => a.date.localeCompare(b.date) || order(a.part_of_day) - order(b.part_of_day));
+  return (
+    <label className="block">
+      <span className={label}>Scheduled in</span>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className={field}>
+        <option value="">Not scheduled (Work bench)</option>
+        {sorted.map((b) => (
+          <option key={b.id} value={b.id}>
+            {dayLabel(b.date)} · {PARTS.find((p) => p.id === b.part_of_day)?.label} · {b.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
